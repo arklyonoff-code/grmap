@@ -1,0 +1,165 @@
+:root {
+  --status-clear: #1d9e75;
+  --status-caution: #ef9f27;
+  --status-congested: #e24b4a;
+  --status-unknown: #b4b2a9;
+  --text-primary: #111111;
+  --text-secondary: #555555;
+  --text-tertiary: #999999;
+  --bg-base: #f5f4f0;
+  --bg-surface: #ffffff;
+  --divider: #eeeeee;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 20px 16px 40px;
+}
+
+.top-nav {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.chip {
+  height: 34px;
+  border: 1px solid var(--divider);
+  border-radius: 999px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--bg-surface);
+}
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--divider);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.muted {
+  color: var(--text-tertiary);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 10px;
+}
+
+.status-clear {
+  background: var(--status-clear);
+}
+
+.status-caution {
+  background: var(--status-caution);
+}
+
+.status-congested {
+  background: var(--status-congested);
+}
+
+.status-unknown {
+  background: var(--status-unknown);
+}
+
+.list {
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--divider);
+  border-radius: 16px;
+  overflow: hidden;
+  background: var(--bg-surface);
+}
+
+.list-item {
+  min-height: 64px;
+  border-bottom: 1px solid var(--divider);
+  padding: 14px 16px;
+}
+
+.list-item:last-child {
+  border-bottom: none;
+}
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.admin-nav {
+  background: var(--bg-surface);
+  border: 1px solid var(--divider);
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.admin-main {
+  display: grid;
+  gap: 16px;
+}
+
+.btn {
+  border: none;
+  background: #111;
+  color: white;
+  border-radius: 12px;
+  height: 48px;
+  padding: 0 16px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.input {
+  height: 44px;
+  border: 1px solid var(--divider);
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 14px;
+}
