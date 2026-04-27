@@ -1,16 +1,6 @@
 {
   "expo": {
     "name": "GRmap",
-    "slug": "grmap",
-    "version": "1.0.0",
-    "entryPoint": "./index.js",
-    "platforms": ["ios", "android"],
-    "assetBundlePatterns": ["**/*"]
-  }
-}
-{
-  "expo": {
-    "name": "GRmap",
     "slug": "GRmap",
     "version": "1.0.0",
     "orientation": "portrait",
