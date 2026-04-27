@@ -1,7 +1,5 @@
-import type { NextConfig } from "next";
+const nextConfig = {
+  output: 'export',
+}
 
-const nextConfig: NextConfig = {
-  transpilePackages: ["@grmap/shared"],
-};
-
-export default nextConfig;
+export default nextConfig

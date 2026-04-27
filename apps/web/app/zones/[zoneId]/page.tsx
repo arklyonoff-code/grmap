@@ -2,6 +2,10 @@ import Link from "next/link";
 import { TopNav } from "@/components/top-nav";
 import { elapsedText, NOW_TS, reports, waitLabel, zones } from "@/lib/mock-data";
 
+export function generateStaticParams() {
+  return zones.map((zone) => ({ zoneId: zone.id }));
+}
+
 export default async function ZoneDetailPage({
   params,
 }: {

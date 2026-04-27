@@ -6,8 +6,7 @@
   - `/` 지도 홈 (핀 상태 요약 + CTA)
   - `/feed` 제보 피드
   - `/report/new` 제보 등록
-  - `/zones/[zoneId]` 구역 상세
-- Admin
+
   - `/admin/login` 관리자 로그인
   - `/admin` 대시보드
   - `/admin/users` 유저 관리
