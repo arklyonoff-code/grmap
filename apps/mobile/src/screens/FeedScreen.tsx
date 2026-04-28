@@ -5,12 +5,7 @@ import { Colors } from '../constants/colors';
 import { Radius, Spacing, Typography } from '../constants/typography';
 import { useAppStore } from '../stores/useAppStore';
 import { WaitReport } from '@grmap/shared/types';
-import {
-  getCongestionLevel,
-  getElapsedMinutes,
-  getElapsedText,
-  getWaitLevelLabel,
-} from '@grmap/shared/utils/report';
+import { getCongestionLevel, getElapsedText, getWaitLevelLabel, isReportStale } from '@grmap/shared/utils/report';
 
 const FILTERS = ['전체', '채소1동', '채소2동', '과일동', '수산동', '건어물동'] as const;
 
@@ -55,11 +50,11 @@ export function FeedScreen() {
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Feather name="inbox" size={32} color={Colors.text.tertiary} />
+            <Feather name="inbox" size={32} color={Colors.status.unknown} />
             <Text style={styles.emptyText}>아직 제보가 없어요</Text>
           </View>
         }
-        contentContainerStyle={filtered.length ? styles.listContent : styles.emptyWrap}
+        contentContainerStyle={[styles.listContent, !filtered.length && styles.emptyWrap]}
       />
     </View>
   );
@@ -68,12 +63,11 @@ export function FeedScreen() {
 function FeedItem({ item }: { item: WaitReport }) {
   const zones = useAppStore((state) => state.zones);
   const zoneName = zones.find((z) => z.id === item.zoneId)?.name ?? '알 수 없음';
-  const isStale = getElapsedMinutes(item.createdAt) >= 30;
+  const isStale = isReportStale(item.createdAt);
   const vehicleLabel =
     item.vehicleSize === '1ton' ? '1톤' : item.vehicleSize === '5ton' ? '5톤' : item.vehicleSize === '11ton_plus' ? '11톤+' : '미선택';
   const zone = zones.find((z) => z.id === item.zoneId);
-  const latestReport = item ?? null;
-  const level = getCongestionLevel(latestReport);
+  const level = getCongestionLevel(item);
   const dotColor =
     level === 'green'
       ? Colors.status.clear
@@ -82,7 +76,6 @@ function FeedItem({ item }: { item: WaitReport }) {
         : level === 'red'
           ? Colors.status.congested
           : Colors.status.unknown;
-  const badgeLabel = level === 'green' ? '원활' : level === 'yellow' ? '보통' : level === 'red' ? '혼잡' : '정보없음';
 
   return (
     <View style={[styles.item, isStale && styles.stale]}>
@@ -90,25 +83,25 @@ function FeedItem({ item }: { item: WaitReport }) {
         <View style={styles.zoneRow}>
           <View style={[styles.dot, { backgroundColor: dotColor }]} />
           <Text style={styles.zoneName}>{zone?.name ?? zoneName}</Text>
+          <PlatformBadge platform={item.platform} />
         </View>
-        <Text style={[styles.badge, { color: dotColor, backgroundColor: `${dotColor}1F` }]}>{badgeLabel}</Text>
+        <Text style={styles.timeText}>{getElapsedText(item.createdAt)}</Text>
       </View>
-      <View style={styles.bottomRow}>
-        <Text style={styles.primaryText}>
-          {getWaitLevelLabel(item.waitLevel)}  ·  {vehicleLabel}
-        </Text>
-        <View style={styles.metaRow}>
-          <Text
-            style={[
-              styles.platformBadge,
-              item.platform === 'web' ? styles.webBadge : styles.appBadge,
-            ]}
-          >
-            {item.platform === 'web' ? '웹' : '앱'}
-          </Text>
-          <Text style={styles.timeText}>{getElapsedText(item.createdAt)}</Text>
-        </View>
-      </View>
+      <Text style={styles.primaryText}>
+        {getWaitLevelLabel(item.waitLevel)}
+        {item.vehicleSize ? ` · ${vehicleLabel}` : ''}
+      </Text>
+    </View>
+  );
+}
+
+function PlatformBadge({ platform }: { platform: WaitReport['platform'] }) {
+  const isWeb = platform === 'web';
+  return (
+    <View style={[styles.platformBadge, isWeb ? styles.webBadge : styles.appBadge]}>
+      <Text style={[styles.platformBadgeText, isWeb ? styles.webBadgeText : styles.appBadgeText]}>
+        {isWeb ? '웹' : '앱'}
+      </Text>
     </View>
   );
 }
@@ -140,31 +133,17 @@ const styles = StyleSheet.create({
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   zoneRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   dot: { width: 10, height: 10, borderRadius: 5 },
-  zoneName: { color: Colors.text.primary, ...Typography.heading, fontSize: 18 },
-  badge: {
-    fontSize: 13,
-    fontWeight: '500',
-    borderRadius: Radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    overflow: 'hidden',
-  },
-  bottomRow: { marginTop: 4, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  primaryText: { color: Colors.text.secondary, ...Typography.body },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  platformBadge: {
-    fontSize: 10,
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    color: Colors.text.inverse,
-    overflow: 'hidden',
-  },
-  webBadge: { backgroundColor: '#3B82F6' },
-  appBadge: { backgroundColor: '#1D9E75' },
-  timeText: { color: Colors.text.tertiary, ...Typography.micro },
-  stale: { opacity: 0.45 },
-  emptyWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyState: { alignItems: 'center', gap: 10 },
-  emptyText: { color: Colors.text.tertiary, ...Typography.body },
+  zoneName: { color: Colors.text.primary, fontSize: 14, fontWeight: '600' },
+  primaryText: { marginTop: 4, color: Colors.text.secondary, fontSize: 14 },
+  platformBadge: { paddingHorizontal: 5, paddingVertical: 2, borderRadius: 4 },
+  platformBadgeText: { fontSize: 10, fontWeight: '600' },
+  webBadge: { backgroundColor: '#EFF6FF' },
+  appBadge: { backgroundColor: '#F0FDF4' },
+  webBadgeText: { color: '#1D4ED8' },
+  appBadgeText: { color: '#065F46' },
+  timeText: { color: Colors.text.hint, ...Typography.micro },
+  stale: { opacity: 0.4 },
+  emptyWrap: { flexGrow: 1 },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
+  emptyText: { marginTop: 12, color: Colors.status.unknown, ...Typography.body },
 });

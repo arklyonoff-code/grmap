@@ -37,7 +37,7 @@ function Tabs() {
           minHeight: 48,
         },
         tabBarActiveTintColor: Colors.text.primary,
-        tabBarInactiveTintColor: Colors.text.tertiary,
+        tabBarInactiveTintColor: Colors.status.unknown,
         tabBarLabelStyle: { fontSize: 11, marginTop: 2 },
         tabBarShowLabel: true,
         tabBarIcon: ({ color }) => (

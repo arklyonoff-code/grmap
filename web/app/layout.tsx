@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
+import { BottomTab } from "@/components/BottomTab";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,14 +30,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <div className="app-frame">{children}</div>
-        <nav className="bottom-tab">
-          <Link href="/" className="tab-link">
-            지도
-          </Link>
-          <Link href="/feed" className="tab-link">
-            제보
-          </Link>
-        </nav>
+        <BottomTab />
       </body>
     </html>
   );

@@ -1,7 +1,7 @@
 export const Typography = {
   display: { fontSize: 36, fontWeight: '700', letterSpacing: -1 },
-  heading: { fontSize: 20, fontWeight: '600', letterSpacing: -0.5 },
-  body: { fontSize: 16, fontWeight: '400', lineHeight: 24 },
+  heading: { fontSize: 20, fontWeight: '700', letterSpacing: -0.4 },
+  body: { fontSize: 15, fontWeight: '400', lineHeight: 22 },
   caption: { fontSize: 13, fontWeight: '400', lineHeight: 18 },
   micro: { fontSize: 11, fontWeight: '400', lineHeight: 16 },
 } as const;

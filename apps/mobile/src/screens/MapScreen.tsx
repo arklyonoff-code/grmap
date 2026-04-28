@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PointDetailSheet } from '../components/PointDetailSheet';
 import { ZoneMarker } from '../components/ZoneMarker';
 import { Colors } from '../constants/colors';
@@ -12,21 +12,13 @@ import { ZoneWithStatus } from '@grmap/shared/types';
 import { getCongestionLevel } from '@grmap/shared/utils/report';
 
 const GRAYSCALE_MAP_STYLE = [
-  { featureType: 'all', elementType: 'geometry', stylers: [{ saturation: -35 }] },
-  { featureType: 'landscape', elementType: 'geometry', stylers: [{ color: '#EDE8DA' }] },
-  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#DDE8D3' }] },
-  { featureType: 'administrative.land_parcel', elementType: 'geometry', stylers: [{ color: '#F7F5EF' }] },
+  { featureType: 'all', elementType: 'geometry', stylers: [{ saturation: -60 }] },
   { featureType: 'poi', elementType: 'all', stylers: [{ visibility: 'off' }] },
   { featureType: 'transit', elementType: 'all', stylers: [{ visibility: 'off' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#F1EFE8' }] },
-  { featureType: 'road.arterial', elementType: 'geometry', stylers: [{ color: '#E8E3D7' }] },
-  { featureType: 'road.arterial', elementType: 'labels', stylers: [{ visibility: 'off' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#CFE2EC' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#6F8FA3' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#F3D8D1' }] },
 ];
 
 export function MapScreen() {
+  const insets = useSafeAreaInsets();
   const zones = useAppStore((state) => state.zones);
   const activeReports = useAppStore((state) => state.activeReports);
   const selectedZone = useAppStore((state) => state.selectedZone);
@@ -34,18 +26,23 @@ export function MapScreen() {
   const openWaitModal = useAppStore((state) => state.openWaitModal);
 
   const zonesWithStatus = useMemo<ZoneWithStatus[]>(
-    () =>
-      zones.map((zone) => {
-        const latestReport =
-          activeReports
-            .filter((r) => r.zoneId === zone.id)
-            .sort((a, b) => b.createdAt - a.createdAt)[0] ?? null;
+    () => {
+      const reportMap = new Map<string, (typeof activeReports)[number]>();
+      activeReports.forEach((report) => {
+        const prev = reportMap.get(report.zoneId);
+        if (!prev || report.createdAt > prev.createdAt) {
+          reportMap.set(report.zoneId, report);
+        }
+      });
+      return zones.map((zone) => {
+        const latestReport = reportMap.get(zone.id) ?? null;
         return {
           ...zone,
           latestReport,
           congestionLevel: getCongestionLevel(latestReport),
         };
-      }),
+      });
+    },
     [zones, activeReports]
   );
 
@@ -73,8 +70,8 @@ export function MapScreen() {
       </MapView>
 
       <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-        <View style={styles.topBar}>
-          <Image source={require('../../assets/grmap-logo.png')} style={styles.logo} resizeMode="contain" />
+        <View style={[styles.topBar, { marginTop: insets.top + 12 }]}>
+          <Text style={styles.logoText}>GRmap</Text>
         </View>
 
         <View style={styles.bottomArea}>
@@ -95,14 +92,13 @@ const styles = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between' },
   topBar: {
     alignSelf: 'flex-start',
-    marginTop: Spacing.sm,
     marginLeft: Spacing.md,
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.xs,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: Radius.sm,
-    backgroundColor: 'rgba(17,17,17,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.65)',
   },
-  logo: { width: 92, height: 32 },
+  logoText: { color: Colors.text.inverse, fontSize: 15, fontWeight: '700' },
   bottomArea: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm },
   bottomButton: {
     height: 56,

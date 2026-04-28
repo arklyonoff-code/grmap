@@ -4,13 +4,14 @@
   "main": "index.js",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "web"
   ],
   "scripts": {
-    "web": "npm run dev --workspace=apps/web",
+    "web": "npm run dev --workspace=web",
     "admin": "npm run dev --workspace=apps/admin",
     "mobile": "npm run start --workspace=apps/mobile",
-    "build:web": "npm run build --workspace=apps/web",
+    "build:web": "npm run build --workspace=web",
     "build:admin": "npm run build --workspace=apps/admin"
   },
   "devDependencies": {}
