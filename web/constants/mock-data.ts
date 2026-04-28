@@ -1,12 +1,12 @@
 import { CONGESTION_COLORS } from './design';
 
 export const MOCK_ZONES = [
-  { id: 'zone-01', name: '채소1동', shortName: '채소1', top: '22%', left: '38%' },
-  { id: 'zone-02', name: '채소2동', shortName: '채소2', top: '32%', left: '54%' },
-  { id: 'zone-03', name: '과일동', shortName: '과일', top: '44%', left: '58%' },
-  { id: 'zone-04', name: '수산동', shortName: '수산', top: '56%', left: '33%' },
-  { id: 'zone-05', name: '건어물동', shortName: '건어물', top: '66%', left: '48%' },
-  { id: 'zone-06', name: '일반동', shortName: '일반', top: '48%', left: '22%' },
+  { id: 'zone-01', name: '채소1동', shortName: '채소1', lat: 37.4935, lng: 127.1185 },
+  { id: 'zone-02', name: '채소2동', shortName: '채소2', lat: 37.4942, lng: 127.1196 },
+  { id: 'zone-03', name: '과일동', shortName: '과일', lat: 37.492, lng: 127.12 },
+  { id: 'zone-04', name: '수산동', shortName: '수산', lat: 37.491, lng: 127.1178 },
+  { id: 'zone-05', name: '건어물동', shortName: '건어물', lat: 37.4916, lng: 127.121 },
+  { id: 'zone-06', name: '일반동', shortName: '일반', lat: 37.495, lng: 127.1174 },
 ] as const;
 
 export const MOCK_FEED = [

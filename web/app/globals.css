@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
   --background: #f5f4f0;
@@ -49,6 +50,26 @@ body {
   background: linear-gradient(180deg, #ece7dc 0%, #f5f3ec 100%);
 }
 
+.map-fallback {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #555555;
+  background: linear-gradient(180deg, #ece7dc 0%, #f5f3ec 100%);
+  text-align: center;
+  padding: 20px;
+}
+
+.map-fallback p {
+  margin: 0;
+  font-size: 13px;
+  color: #999999;
+}
+
 .top-overlay {
   position: absolute;
   top: 16px;
@@ -65,8 +86,7 @@ body {
   font-weight: 700;
 }
 
-.marker {
-  position: absolute;
+.zone-marker {
   width: 56px;
   height: 56px;
   border-radius: 56px;
@@ -76,7 +96,10 @@ body {
   font-weight: 700;
   display: grid;
   place-items: center;
-  transform: translate(-50%, -50%);
+}
+
+.zone-marker.selected {
+  border: 3px solid #ffffff;
 }
 
 .bottom-overlay {
