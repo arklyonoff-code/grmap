@@ -4,7 +4,7 @@
     "$postId": {
       ".write": "!data.exists()",
       "status": {
-        ".write": "auth != null && root.child('admin_users').child(auth.uid).exists()"
+        ".write": true
       },
       "likes": {
         ".write": true

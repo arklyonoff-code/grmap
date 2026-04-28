@@ -12,15 +12,21 @@ import { generateRandomNickname } from "@grmap/shared/utils/nickname";
 import { createPost } from "@/services/board";
 import { sha256 } from "@/utils/hash";
 
-const CATEGORIES: PostCategory[] = ["free", "info", "question"];
+const CATEGORIES: PostCategory[] = ["free", "info", "question", "wanted", "selling", "price"];
 
 export default function BoardWritePage() {
   const router = useRouter();
-  const [nickname, setNickname] = useState(generateRandomNickname());
+  const [nickname, setNickname] = useState(() => {
+    if (typeof window === "undefined") return generateRandomNickname();
+    return localStorage.getItem("grmap_nickname") || generateRandomNickname();
+  });
   const [password, setPassword] = useState("");
   const [category, setCategory] = useState<PostCategory>("free");
   const [zoneTag, setZoneTag] = useState<keyof typeof ZONE_LABELS>("all");
   const [title, setTitle] = useState("");
+  const [priceItem, setPriceItem] = useState("");
+  const [priceValue, setPriceValue] = useState<number | "">("");
+  const [priceUnit, setPriceUnit] = useState("원/kg");
   const [submitting, setSubmitting] = useState(false);
 
   const editor = useEditor({
@@ -37,6 +43,17 @@ export default function BoardWritePage() {
     () => Object.entries(ZONE_LABELS).map(([key, label]) => ({ key, label })),
     []
   );
+
+  const handleNicknameChange = (value: string) => {
+    setNickname(value);
+    localStorage.setItem("grmap_nickname", value);
+  };
+
+  const handleRandomNickname = () => {
+    const newNick = generateRandomNickname();
+    setNickname(newNick);
+    localStorage.setItem("grmap_nickname", newNick);
+  };
 
   const onSubmit = async () => {
     const content = editor?.getHTML().trim() ?? "";
@@ -56,6 +73,9 @@ export default function BoardWritePage() {
         category,
         zoneTag,
         deviceId: "",
+        priceItem: category === "price" ? priceItem || undefined : undefined,
+        priceValue: category === "price" && priceValue !== "" ? Number(priceValue) : undefined,
+        priceUnit: category === "price" ? priceUnit : undefined,
       });
       router.push("/board");
     } catch (error) {
@@ -68,23 +88,19 @@ export default function BoardWritePage() {
   return (
     <main className="board-page">
       <div className="board-container write">
-        <section className="guest-banner">
-          <p>비회원 작성 모드 (회원 작성 가능)</p>
-          <div>
-            <button disabled>로그인</button>
-            <button disabled>회원가입</button>
-          </div>
-        </section>
+        <p style={{ fontSize: 13, color: "#999", marginBottom: 4 }}>
+          닉네임과 비밀번호는 글 삭제 시 필요합니다.
+        </p>
 
         <div className="inline-fields">
           <div className="nickname-wrap">
             <input
               value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
+              onChange={(e) => handleNicknameChange(e.target.value)}
               placeholder="엉뚱한찰떡926"
               maxLength={20}
             />
-            <button type="button" onClick={() => setNickname(generateRandomNickname())} aria-label="랜덤 닉네임">
+            <button type="button" onClick={handleRandomNickname} aria-label="랜덤 닉네임">
               ↻
             </button>
           </div>
@@ -92,7 +108,7 @@ export default function BoardWritePage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="삭제할 때 필요해요"
+            placeholder="비밀번호(삭제할 때 필요해요)"
             maxLength={20}
           />
         </div>
@@ -104,6 +120,11 @@ export default function BoardWritePage() {
             </option>
           ))}
         </select>
+        {["wanted", "selling"].includes(category) && (
+          <p style={{ fontSize: 12, color: "#E24B4A", marginTop: -4 }}>
+            ⚡ 급구·급매 게시글은 목록 상단에 노출됩니다.
+          </p>
+        )}
 
         <label className="board-label">구역 태그</label>
         <div className="chip-row">
@@ -122,9 +143,40 @@ export default function BoardWritePage() {
           className="board-input"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="오늘의 가성비 메뉴 추천"
+          placeholder="오늘의 식사 메뉴 추천"
           maxLength={100}
         />
+        {category === "price" && (
+          <div style={{ display: "flex", gap: 8, marginTop: -4 }}>
+            <input
+              placeholder="품목명 (예: 배추, 고추)"
+              value={priceItem}
+              onChange={(e) => setPriceItem(e.target.value)}
+              maxLength={20}
+              className="board-input"
+              style={{ flex: 2 }}
+            />
+            <input
+              type="number"
+              placeholder="가격"
+              value={priceValue}
+              onChange={(e) => setPriceValue(e.target.value ? Number(e.target.value) : "")}
+              className="board-input"
+              style={{ flex: 1 }}
+            />
+            <select
+              value={priceUnit}
+              onChange={(e) => setPriceUnit(e.target.value)}
+              className="board-select"
+              style={{ flex: 1 }}
+            >
+              <option value="원/kg">원/kg</option>
+              <option value="원/박스">원/박스</option>
+              <option value="원/망">원/망</option>
+              <option value="원/개">원/개</option>
+            </select>
+          </div>
+        )}
 
         <div className="editor-toolbar">
           <button onClick={() => editor?.chain().focus().toggleBold().run()}>Bold</button>

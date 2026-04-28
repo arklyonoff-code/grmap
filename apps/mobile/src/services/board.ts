@@ -13,7 +13,7 @@ import {
   startAfter,
   update,
 } from 'firebase/database';
-import { BoardComment, BoardPost, PostCategory } from '@grmap/shared/types';
+import { BoardComment, BoardPost, PostCategory, PostStatus } from '@grmap/shared/types';
 
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? 'MISSING_API_KEY',
@@ -125,4 +125,8 @@ export async function deleteComment(postId: string, commentId: string, passwordH
   if (comment.passwordHash !== passwordHash) throw new Error('비밀번호가 틀렸습니다.');
   await update(ref(db, `/board_comments/${postId}/${commentId}`), { status: 'hidden' });
   await runTransaction(ref(db, `/board_posts/${postId}/commentCount`), (count) => Math.max(0, (count ?? 0) - 1));
+}
+
+export async function updatePostStatus(postId: string, status: PostStatus) {
+  await set(ref(db, `/board_posts/${postId}/status`), status);
 }

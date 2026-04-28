@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Crypto from 'expo-crypto';
 import { CATEGORY_LABELS, ZONE_LABELS } from '@grmap/shared/constants/board';
@@ -16,7 +17,7 @@ import { PostCategory } from '@grmap/shared/types';
 import { generateRandomNickname } from '@grmap/shared/utils/nickname';
 import { createPost } from '../services/board';
 
-const CATEGORIES: PostCategory[] = ['free', 'info', 'question'];
+const CATEGORIES: PostCategory[] = ['free', 'info', 'question', 'wanted', 'selling', 'price'];
 
 export function BoardWriteModal({
   visible,
@@ -34,6 +35,9 @@ export function BoardWriteModal({
   const [zoneTag, setZoneTag] = useState<keyof typeof ZONE_LABELS>('all');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [priceItem, setPriceItem] = useState('');
+  const [priceValue, setPriceValue] = useState('');
+  const [priceUnit, setPriceUnit] = useState('원/kg');
   const [submitting, setSubmitting] = useState(false);
 
   const zoneOptions = useMemo(
@@ -41,13 +45,34 @@ export function BoardWriteModal({
     []
   );
 
+  useEffect(() => {
+    if (!visible) return;
+    AsyncStorage.getItem('grmap_nickname').then((saved) => {
+      if (saved) setNickname(saved);
+      else setNickname(generateRandomNickname());
+    });
+  }, [visible]);
+
+  const handleNicknameChange = async (value: string) => {
+    setNickname(value);
+    await AsyncStorage.setItem('grmap_nickname', value);
+  };
+
+  const handleRandomNickname = async () => {
+    const next = generateRandomNickname();
+    setNickname(next);
+    await AsyncStorage.setItem('grmap_nickname', next);
+  };
+
   const reset = () => {
-    setNickname(generateRandomNickname());
     setPassword('');
     setCategory('free');
     setZoneTag('all');
     setTitle('');
     setContent('');
+    setPriceItem('');
+    setPriceValue('');
+    setPriceUnit('원/kg');
   };
 
   const handleSubmit = async () => {
@@ -68,6 +93,9 @@ export function BoardWriteModal({
         category,
         zoneTag,
         deviceId: '',
+        priceItem: category === 'price' ? priceItem || undefined : undefined,
+        priceValue: category === 'price' && priceValue ? Number(priceValue) : undefined,
+        priceUnit: category === 'price' ? priceUnit : undefined,
       });
       await onCreated();
       reset();
@@ -92,11 +120,11 @@ export function BoardWriteModal({
               <TextInput
                 style={styles.input}
                 value={nickname}
-                onChangeText={setNickname}
+                onChangeText={handleNicknameChange}
                 placeholder="닉네임"
                 maxLength={20}
               />
-              <TouchableOpacity style={styles.shuffle} onPress={() => setNickname(generateRandomNickname())}>
+              <TouchableOpacity style={styles.shuffle} onPress={handleRandomNickname}>
                 <Text>↻</Text>
               </TouchableOpacity>
             </View>
@@ -118,11 +146,14 @@ export function BoardWriteModal({
                 onPress={() => setCategory(item)}
               >
                 <Text style={[styles.toggleText, category === item && styles.toggleTextSelected]}>
-                  {CATEGORY_LABELS[item]}
+                  {item === 'wanted' || item === 'selling' ? `⚡ ${CATEGORY_LABELS[item]}` : CATEGORY_LABELS[item]}
                 </Text>
               </Pressable>
             ))}
           </View>
+          {(category === 'wanted' || category === 'selling') && (
+            <Text style={styles.urgentHint}>⚡ 급구·급매 게시글은 목록 상단에 노출됩니다.</Text>
+          )}
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.zoneRow}>
             {zoneOptions.map((item) => (
@@ -152,6 +183,29 @@ export function BoardWriteModal({
             placeholder="가락시장 사람들과 공유할 내용을 적어주세요."
             multiline
           />
+          {category === 'price' && (
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: -4 }}>
+              <TextInput
+                placeholder="품목명"
+                value={priceItem}
+                onChangeText={setPriceItem}
+                style={[styles.input, { flex: 2 }]}
+              />
+              <TextInput
+                placeholder="가격"
+                value={priceValue}
+                onChangeText={setPriceValue}
+                keyboardType="numeric"
+                style={[styles.input, { flex: 1 }]}
+              />
+              <TextInput
+                placeholder="단위(원/kg)"
+                value={priceUnit}
+                onChangeText={setPriceUnit}
+                style={[styles.input, { flex: 1 }]}
+              />
+            </View>
+          )}
 
           <Pressable style={styles.submitBtn} disabled={submitting} onPress={handleSubmit}>
             <Text style={styles.submitText}>{submitting ? '등록 중...' : '등록'}</Text>
@@ -209,6 +263,7 @@ const styles = StyleSheet.create({
   toggleSelected: { backgroundColor: '#111', borderColor: '#111' },
   toggleText: { fontSize: 14, color: '#555' },
   toggleTextSelected: { color: '#FFF' },
+  urgentHint: { marginTop: -2, fontSize: 12, color: '#E24B4A' },
   zoneRow: { gap: 8 },
   zoneChip: {
     height: 34,

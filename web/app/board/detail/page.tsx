@@ -9,6 +9,7 @@ import {
   deletePost,
   createComment,
   deleteComment,
+  updatePostStatus,
 } from '@/services/board';
 import { BoardPost, BoardComment } from '@grmap/shared/types';
 import { CATEGORY_LABELS, CATEGORY_COLORS, ZONE_LABELS } from '@grmap/shared/constants/board';
@@ -81,6 +82,18 @@ function BoardDetailContent() {
     }
   };
 
+  const handleMarkDone = async () => {
+    const pwd = prompt('작성 시 입력한 비밀번호를 입력하세요');
+    if (!pwd) return;
+    const hash = await sha256(pwd);
+    if (hash !== post.passwordHash) {
+      alert('비밀번호가 틀렸습니다.');
+      return;
+    }
+    await updatePostStatus(post.id, 'done');
+    setPost((p) => (p ? { ...p, status: 'done' } : p));
+  };
+
   const handleComment = async () => {
     if (!cNick.trim() || !cPwd.trim() || !cContent.trim()) {
       alert('닉네임, 비밀번호, 내용을 모두 입력하세요.');
@@ -128,14 +141,40 @@ function BoardDetailContent() {
             </span>
           )}
         </div>
-        <h1 style={{ fontSize: 22, fontWeight: 500, lineHeight: 1.4, marginBottom: 10 }}>{post.title}</h1>
+        <h1 style={{ fontSize: 22, fontWeight: 500, lineHeight: 1.4, marginBottom: 10, textDecoration: post.status === 'done' ? 'line-through' : 'none' }}>
+          {post.title}
+        </h1>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: 13, color: '#999' }}>
             {post.nickname} · {getElapsedText(post.createdAt)}
           </span>
-          <button onClick={handleDeletePost} style={styles.deleteBtn}>
-            삭제
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {['wanted', 'selling'].includes(post.category) && post.status !== 'done' && (
+              <button
+                onClick={handleMarkDone}
+                style={{
+                  fontSize: 12,
+                  color: '#1D9E75',
+                  background: 'none',
+                  border: '1px solid #1D9E75',
+                  borderRadius: 6,
+                  padding: '3px 8px',
+                  cursor: 'pointer',
+                  marginRight: 8,
+                }}
+              >
+                거래완료
+              </button>
+            )}
+            {post.status === 'done' && (
+              <span style={{ fontSize: 12, color: '#6B7280', background: '#E5E7EB', padding: '3px 8px', borderRadius: 6 }}>
+                거래완료
+              </span>
+            )}
+            <button onClick={handleDeletePost} style={styles.deleteBtn}>
+              삭제
+            </button>
+          </div>
         </div>
       </div>
 

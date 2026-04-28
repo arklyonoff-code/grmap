@@ -40,8 +40,15 @@ export interface ZoneWithStatus extends Zone {
   congestionLevel: 'green' | 'yellow' | 'red' | 'unknown';
 }
 
-export type PostCategory = 'free' | 'info' | 'question' | 'notice';
-export type PostStatus = 'active' | 'hidden';
+export type PostCategory =
+  | 'free'
+  | 'info'
+  | 'question'
+  | 'notice'
+  | 'wanted'
+  | 'selling'
+  | 'price';
+export type PostStatus = 'active' | 'hidden' | 'done';
 
 export interface BoardPost {
   id: string;
@@ -56,6 +63,10 @@ export interface BoardPost {
   commentCount: number;
   createdAt: number;
   status: PostStatus;
+  priceItem?: string;
+  priceValue?: number;
+  priceUnit?: string;
+  priceYesterday?: number;
 }
 
 export interface BoardComment {

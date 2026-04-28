@@ -10,7 +10,7 @@ import {
   startAfter,
   update,
 } from 'firebase/database';
-import type { BoardComment, BoardPost, PostCategory } from '@grmap/shared/types';
+import type { BoardComment, BoardPost, PostCategory, PostStatus } from '@grmap/shared/types';
 import { db } from './firebase';
 
 const PAGE_SIZE = 20;
@@ -118,4 +118,9 @@ export async function deleteComment(postId: string, commentId: string, passwordH
   if (passwordHash !== comment.passwordHash) throw new Error('비밀번호가 틀렸습니다.');
   await update(ref(db, `/board_comments/${postId}/${commentId}`), { status: 'hidden' });
   await runTransaction(ref(db, `/board_posts/${postId}/commentCount`), (count) => Math.max(0, (count ?? 0) - 1));
+}
+
+export async function updatePostStatus(postId: string, status: PostStatus): Promise<void> {
+  const postRef = ref(db, `/board_posts/${postId}/status`);
+  await set(postRef, status);
 }

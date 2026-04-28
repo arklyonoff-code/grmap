@@ -3,6 +3,9 @@ export const CATEGORY_LABELS = {
   info: '정보공유',
   question: '질문',
   notice: '공지',
+  wanted: '급구',
+  selling: '급매',
+  price: '시세',
 } as const;
 
 export const CATEGORY_COLORS = {
@@ -10,7 +13,12 @@ export const CATEGORY_COLORS = {
   info: { bg: '#E1F5EE', text: '#0F6E56' },
   question: { bg: '#EFF6FF', text: '#185FA5' },
   notice: { bg: '#FEF9EC', text: '#92400E' },
+  wanted: { bg: '#FEF2F2', text: '#991B1B' },
+  selling: { bg: '#FEF2F2', text: '#991B1B' },
+  price: { bg: '#F0FDF4', text: '#065F46' },
 } as const;
+
+export const URGENT_CATEGORIES = ['wanted', 'selling'] as const;
 
 export const ZONE_LABELS = {
   all: '전체',

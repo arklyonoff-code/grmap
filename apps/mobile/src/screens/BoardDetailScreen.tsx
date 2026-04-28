@@ -25,6 +25,7 @@ import {
   fetchComments,
   fetchPost,
   toggleLike,
+  updatePostStatus,
 } from '../services/board';
 
 export function BoardDetailScreen() {
@@ -93,9 +94,28 @@ export function BoardDetailScreen() {
           </Text>
           <Text style={styles.zoneBadge}>{ZONE_LABELS[post.zoneTag as keyof typeof ZONE_LABELS] ?? '전체'}</Text>
         </View>
-        <Text style={styles.title}>{post.title}</Text>
+        <Text style={[styles.title, post.status === 'done' && styles.doneTitle]}>{post.title}</Text>
         <Text style={styles.meta}>{post.nickname} · {createdLabel}</Text>
         <View style={styles.actionRow}>
+          {['wanted', 'selling'].includes(post.category) && post.status !== 'done' && (
+            <Pressable
+              onPress={async () => {
+                const input = await askPassword();
+                if (!input) return;
+                const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, input);
+                if (hash !== post.passwordHash) {
+                  Alert.alert('오류', '비밀번호가 틀렸습니다.');
+                  return;
+                }
+                await updatePostStatus(post.id, 'done');
+                setPost((p) => (p ? { ...p, status: 'done' } : p));
+              }}
+              style={styles.doneBtn}
+            >
+              <Text style={styles.doneBtnText}>거래완료</Text>
+            </Pressable>
+          )}
+          {post.status === 'done' && <Text style={styles.doneBadge}>거래완료</Text>}
           <Pressable
             onPress={async () => {
               await toggleLike(post.id);
@@ -223,10 +243,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7F7F7',
   },
   title: { marginTop: 10, fontSize: 22, fontWeight: '500', color: '#111' },
+  doneTitle: { textDecorationLine: 'line-through' },
   meta: { marginTop: 4, color: '#999', fontSize: 13 },
   actionRow: { marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 12, justifyContent: 'flex-end' },
   like: { color: '#E24B4A', fontWeight: '600' },
   delete: { color: '#666', fontSize: 13 },
+  doneBtn: {
+    borderWidth: 1,
+    borderColor: '#1D9E75',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginRight: 8,
+  },
+  doneBtnText: { fontSize: 12, color: '#1D9E75' },
+  doneBadge: {
+    fontSize: 12,
+    color: '#6B7280',
+    backgroundColor: '#E5E7EB',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginRight: 8,
+  },
   separator: { marginTop: 12, height: 1, backgroundColor: '#EEE' },
   commentInputWrap: {
     borderTopWidth: 0.5,
