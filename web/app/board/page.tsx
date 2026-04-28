@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { get, ref } from "firebase/database";
+import type { QueryDocumentSnapshot, DocumentData } from "firebase/firestore";
 import { CATEGORY_COLORS, CATEGORY_LABELS, URGENT_CATEGORIES, ZONE_LABELS } from "@grmap/shared/constants/board";
 import type { BoardPost, PostCategory, WaitReport, Zone } from "@grmap/shared/types";
 import { getCongestionLevel, getElapsedText, getWaitLevelLabel } from "@grmap/shared/utils/report";
-import { fetchPosts } from "@/services/board";
+import { fetchPostsPage, getMarketSignal, subscribePosts } from "@/services/board";
 import { db } from "@/services/firebase";
 
 const CATEGORY_FILTERS: Array<{ key: "all" | PostCategory; label: string }> = [
@@ -24,6 +25,10 @@ const ZONE_FILTERS = Object.entries(ZONE_LABELS).map(([key, label]) => ({ key, l
 
 export default function BoardListPage() {
   const [posts, setPosts] = useState<BoardPost[]>([]);
+  const [olderPosts, setOlderPosts] = useState<BoardPost[]>([]);
+  const [cursor, setCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [zones, setZones] = useState<Zone[]>([]);
   const [reports, setReports] = useState<WaitReport[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,9 +38,24 @@ export default function BoardListPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetchPosts(category === "all" ? undefined : category, zoneTag, undefined)
-      .then(setPosts)
-      .finally(() => setLoading(false));
+    setOlderPosts([]);
+    setCursor(null);
+    setHasMore(true);
+    fetchPostsPage(category === "all" ? undefined : category, zoneTag)
+      .then(({ cursor: nextCursor, posts: firstPage }) => {
+        setCursor(nextCursor);
+        setHasMore(firstPage.length >= 20);
+      })
+      .catch(() => undefined);
+    const unsubscribe = subscribePosts(
+      (nextPosts) => {
+        setPosts(nextPosts);
+        setLoading(false);
+      },
+      category === "all" ? undefined : category,
+      zoneTag
+    );
+    return unsubscribe;
   }, [category, zoneTag]);
 
   useEffect(() => {
@@ -54,8 +74,12 @@ export default function BoardListPage() {
     });
   }, []);
 
-  const merged = useMemo(() => sortPosts(posts), [posts]);
-  const todayHot = useMemo(() => getTodayHot(posts), [posts]);
+  const merged = useMemo(() => {
+    const byId = new Map<string, BoardPost>();
+    [...posts, ...olderPosts].forEach((item) => byId.set(item.id, item));
+    return sortPosts(Array.from(byId.values()));
+  }, [posts, olderPosts]);
+  const marketSignal = useMemo(() => getMarketSignal(posts), [posts]);
 
   const pageSize = 20;
   const totalPages = Math.max(1, Math.ceil(merged.length / pageSize));
@@ -98,7 +122,7 @@ export default function BoardListPage() {
           </div>
         </div>
 
-        <TodayHotSection hotPosts={todayHot} />
+        <MarketSignalSection signalPosts={marketSignal} />
 
         <section className="board-list">
           {loading ? (
@@ -128,6 +152,27 @@ export default function BoardListPage() {
           <button disabled={page >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
             다음
           </button>
+          <button
+            disabled={!hasMore || loadingMore}
+            onClick={async () => {
+              if (!cursor || loadingMore) return;
+              setLoadingMore(true);
+              try {
+                const { posts: next, cursor: nextCursor } = await fetchPostsPage(
+                  category === "all" ? undefined : category,
+                  zoneTag,
+                  cursor
+                );
+                setOlderPosts((prev) => [...prev, ...next]);
+                setCursor(nextCursor);
+                setHasMore(next.length >= 20);
+              } finally {
+                setLoadingMore(false);
+              }
+            }}
+          >
+            {loadingMore ? "불러오는 중..." : hasMore ? "더보기" : "끝"}
+          </button>
         </div>
       </div>
 
@@ -139,14 +184,6 @@ export default function BoardListPage() {
       </Link>
     </main>
   );
-}
-
-function getTodayHot(allPosts: BoardPost[]) {
-  const todayStart = new Date().setHours(0, 0, 0, 0);
-  return allPosts
-    .filter((p) => p.createdAt >= todayStart && p.status === "active")
-    .sort((a, b) => b.likes + b.commentCount - (a.likes + a.commentCount))
-    .slice(0, 3);
 }
 
 function sortPosts(allPosts: BoardPost[]) {
@@ -183,20 +220,20 @@ function ZoneStatusBar({ reports, zones }: { reports: WaitReport[]; zones: Zone[
   );
 }
 
-function TodayHotSection({ hotPosts }: { hotPosts: BoardPost[] }) {
-  if (!hotPosts.length) return null;
+function MarketSignalSection({ signalPosts }: { signalPosts: BoardPost[] }) {
+  if (!signalPosts.length) return null;
   return (
     <div style={{ padding: "12px 16px", borderBottom: "0.5px solid #EEEEEE" }}>
       <div style={{ fontSize: 11, fontWeight: 500, color: "#E24B4A", letterSpacing: 0.5, marginBottom: 8 }}>
-        TODAY HOT
+        MARKET SIGNAL
       </div>
-      {hotPosts.map((post) => (
+      {signalPosts.map((post) => (
         <a key={post.id} href={`/board/detail?id=${post.id}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", textDecoration: "none" }}>
           <span style={{ fontSize: 11, color: "#E24B4A", fontWeight: 700, width: 16 }}>🔥</span>
           <span style={{ fontSize: 14, color: "#111", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {post.title}
           </span>
-          <span style={{ fontSize: 12, color: "#aaa", flexShrink: 0 }}>♥{post.likes}</span>
+          <span style={{ fontSize: 12, color: "#aaa", flexShrink: 0 }}>♥{post.likeCount ?? post.likes ?? 0}</span>
         </a>
       ))}
     </div>
@@ -235,7 +272,7 @@ function PostListItem({ post }: { post: BoardPost }) {
         )}
       </div>
       <div style={{ fontSize: 12, color: "#aaa" }}>
-        {post.nickname} · 💬{post.commentCount} · ♥{post.likes}
+        {post.nickname} · 💬{post.commentCount} · ♥{post.likeCount ?? post.likes ?? 0}
       </div>
     </a>
   );

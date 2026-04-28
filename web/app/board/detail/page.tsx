@@ -3,12 +3,14 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState, Suspense } from 'react';
 import {
-  fetchPost,
   fetchComments,
   toggleLike,
   deletePost,
   createComment,
   deleteComment,
+  incrementPostView,
+  subscribeComments,
+  subscribePost,
   updatePostStatus,
 } from '@/services/board';
 import { BoardPost, BoardComment } from '@grmap/shared/types';
@@ -48,13 +50,21 @@ function BoardDetailContent() {
     }
     const wasLiked = localStorage.getItem(`grmap_liked_${postId}`) === '1';
     setLiked(wasLiked);
-    Promise.all([fetchPost(postId), fetchComments(postId)])
-      .then(([p, c]) => {
-        setPost(p);
-        setComments(c);
-      })
-      .catch(() => setError('게시글을 불러오지 못했습니다.'))
-      .finally(() => setLoading(false));
+    const unsubPost = subscribePost(postId, (loadedPost) => {
+      if (!loadedPost || loadedPost.status === 'hidden') {
+        setError('게시글을 불러오지 못했습니다.');
+        setLoading(false);
+        return;
+      }
+      setPost(loadedPost);
+      setLoading(false);
+    });
+    const unsubComments = subscribeComments(postId, setComments);
+    incrementPostView(postId).catch(() => undefined);
+    return () => {
+      unsubPost();
+      unsubComments();
+    };
   }, [postId, router]);
 
   if (loading) return <div style={styles.center}>불러오는 중...</div>;
@@ -67,7 +77,15 @@ function BoardDetailContent() {
     const newLiked = !liked;
     setLiked(newLiked);
     localStorage.setItem(`grmap_liked_${post.id}`, newLiked ? '1' : '0');
-    setPost((p) => (p ? { ...p, likes: p.likes + (newLiked ? 1 : -1) } : p));
+    setPost((p) =>
+      p
+        ? {
+            ...p,
+            likeCount: Math.max(0, (p.likeCount ?? p.likes ?? 0) + (newLiked ? 1 : -1)),
+            likes: Math.max(0, (p.likeCount ?? p.likes ?? 0) + (newLiked ? 1 : -1)),
+          }
+        : p
+    );
   };
 
   const handleDeletePost = async () => {
@@ -198,7 +216,7 @@ function BoardDetailContent() {
         >
           ♥
         </button>
-        <div style={{ fontSize: 14, color: '#999', marginTop: 4 }}>{post.likes}</div>
+        <div style={{ fontSize: 14, color: '#999', marginTop: 4 }}>{post.likeCount ?? post.likes ?? 0}</div>
       </div>
 
       <div style={{ borderTop: '1px solid #EEEEEE', padding: '0 16px' }}>

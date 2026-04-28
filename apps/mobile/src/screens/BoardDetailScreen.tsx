@@ -22,8 +22,9 @@ import {
   createComment,
   deleteComment,
   deletePost,
-  fetchComments,
-  fetchPost,
+  incrementPostView,
+  subscribeComments,
+  subscribePost,
   toggleLike,
   updatePostStatus,
 } from '../services/board';
@@ -58,20 +59,19 @@ export function BoardDetailScreen() {
       resolve(null);
     });
 
-  const load = async () => {
+  useEffect(() => {
     if (!postId) return;
     setLoading(true);
-    try {
-      const [p, c] = await Promise.all([fetchPost(postId), fetchComments(postId)]);
-      setPost(p);
-      setComments(c);
-    } finally {
+    const unsubPost = subscribePost(postId, (nextPost) => {
+      setPost(nextPost);
       setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    load();
+    });
+    const unsubComments = subscribeComments(postId, setComments);
+    incrementPostView(postId).catch(() => undefined);
+    return () => {
+      unsubPost();
+      unsubComments();
+    };
   }, [postId]);
 
   if (!post) {
@@ -119,10 +119,11 @@ export function BoardDetailScreen() {
           <Pressable
             onPress={async () => {
               await toggleLike(post.id);
-              await load();
+              const current = post.likeCount ?? post.likes ?? 0;
+              setPost((p) => (p ? { ...p, likeCount: current + 1, likes: current + 1 } : p));
             }}
           >
-            <Text style={styles.like}>♥ {post.likes}</Text>
+            <Text style={styles.like}>♥ {post.likeCount ?? post.likes ?? 0}</Text>
           </Pressable>
           <Text style={styles.meta}>💬 {comments.length}</Text>
           <Pressable
@@ -171,7 +172,6 @@ export function BoardDetailScreen() {
               const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, input);
               try {
                 await deleteComment(post.id, commentId, hash);
-                await load();
               } catch (error) {
                 alert(error instanceof Error ? error.message : '삭제 실패');
               }
@@ -216,7 +216,6 @@ export function BoardDetailScreen() {
               });
               setContent('');
               setPassword('');
-              await load();
             }}
           >
             <Text style={styles.submitText}>등록</Text>

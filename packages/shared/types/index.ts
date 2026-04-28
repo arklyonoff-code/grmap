@@ -49,6 +49,7 @@ export type PostCategory =
   | 'selling'
   | 'price';
 export type PostStatus = 'active' | 'hidden' | 'done';
+export type BoardPostType = 'info' | 'demand' | 'supply' | 'price_signal' | 'closed';
 
 export interface BoardPost {
   id: string;
@@ -56,10 +57,13 @@ export interface BoardPost {
   content: string;
   nickname: string;
   passwordHash: string;
+  type: BoardPostType;
   category: PostCategory;
   zoneTag: string;
   deviceId: string;
-  likes: number;
+  viewCount: number;
+  likeCount: number;
+  likes?: number;
   commentCount: number;
   createdAt: number;
   status: PostStatus;

@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { CATEGORY_LABELS, URGENT_CATEGORIES, ZONE_LABELS } from '@grmap/shared/constants/board';
 import { BoardPost, PostCategory } from '@grmap/shared/types';
 import { BoardWriteModal } from '../components/BoardWriteModal';
 import { PostItem } from '../components/PostItem';
-import { fetchPosts } from '../services/board';
+import { fetchPostsPage, subscribePosts } from '../services/board';
 import { getElapsedText } from '@grmap/shared/utils/report';
 
 const CATEGORY_TABS: Array<{ key: 'all' | PostCategory; label: string }> = [
@@ -23,6 +24,10 @@ const CATEGORY_TABS: Array<{ key: 'all' | PostCategory; label: string }> = [
 export function BoardListScreen() {
   const navigation = useNavigation<any>();
   const [posts, setPosts] = useState<BoardPost[]>([]);
+  const [olderPosts, setOlderPosts] = useState<BoardPost[]>([]);
+  const [cursor, setCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [category, setCategory] = useState<'all' | PostCategory>('all');
   const [zoneTag, setZoneTag] = useState<keyof typeof ZONE_LABELS>('all');
   const [loading, setLoading] = useState(false);
@@ -30,33 +35,44 @@ export function BoardListScreen() {
 
   const zoneTabs = useMemo(() => Object.entries(ZONE_LABELS), []);
 
-  const load = async () => {
-    setLoading(true);
-    try {
-      const loaded = await fetchPosts(category === 'all' ? undefined : category, zoneTag);
-      setPosts(loaded);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    load();
+    setLoading(true);
+    setOlderPosts([]);
+    setCursor(null);
+    setHasMore(true);
+    fetchPostsPage(category === 'all' ? undefined : category, zoneTag)
+      .then(({ cursor: nextCursor, posts: first }) => {
+        setCursor(nextCursor);
+        setHasMore(first.length >= 20);
+      })
+      .catch(() => undefined);
+    const unsubscribe = subscribePosts(
+      (loaded) => {
+        setPosts(loaded);
+        setLoading(false);
+      },
+      category === 'all' ? undefined : category,
+      zoneTag
+    );
+    return unsubscribe;
   }, [category, zoneTag]);
 
   const sortedPosts = useMemo(() => {
-    const notices = posts.filter((p) => p.category === 'notice').sort((a, b) => b.createdAt - a.createdAt);
-    const urgent = posts
+    const mergedBase = [...posts, ...olderPosts];
+    const deduped = Array.from(new Map(mergedBase.map((item) => [item.id, item])).values());
+    const notices = deduped.filter((p) => p.category === 'notice').sort((a, b) => b.createdAt - a.createdAt);
+    const urgent = deduped
       .filter((p) => URGENT_CATEGORIES.includes(p.category as (typeof URGENT_CATEGORIES)[number]) && p.status !== 'done')
       .sort((a, b) => b.createdAt - a.createdAt);
-    const done = posts.filter((p) => p.status === 'done').sort((a, b) => b.createdAt - a.createdAt);
-    const rest = posts
+    const done = deduped.filter((p) => p.status === 'done').sort((a, b) => b.createdAt - a.createdAt);
+    const rest = deduped
       .filter((p) => p.category !== 'notice' && !URGENT_CATEGORIES.includes(p.category as (typeof URGENT_CATEGORIES)[number]) && p.status === 'active')
       .sort((a, b) => b.createdAt - a.createdAt);
     return [...notices, ...urgent, ...rest, ...done];
-  }, [posts]);
+  }, [posts, olderPosts]);
 
   const pricePosts = sortedPosts.filter((item) => item.category === 'price');
+  const activeCategory = category === 'all' ? undefined : category;
 
   return (
     <View style={styles.container}>
@@ -91,20 +107,56 @@ export function BoardListScreen() {
           data={pricePosts}
           keyExtractor={(item) => item.id}
           refreshing={loading}
-          onRefresh={load}
+          onRefresh={() => undefined}
+          onEndReachedThreshold={0.5}
+          onEndReached={async () => {
+            if (!cursor || loadingMore || !hasMore) return;
+            setLoadingMore(true);
+            try {
+              const { posts: next, cursor: nextCursor } = await fetchPostsPage(
+                activeCategory,
+                zoneTag,
+                cursor
+              );
+              setOlderPosts((prev) => [...prev, ...next]);
+              setCursor(nextCursor);
+              setHasMore(next.length >= 20);
+            } finally {
+              setLoadingMore(false);
+            }
+          }}
           renderItem={({ item }) => <PriceListItem post={item} onPress={() => navigation.navigate('BoardDetail', { postId: item.id })} />}
           ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>오늘 등록된 시세 정보가 없어요</Text></View>}
+          ListFooterComponent={loadingMore ? <Text style={styles.loadingMore}>불러오는 중...</Text> : null}
         />
       ) : (
         <FlatList
           data={sortedPosts}
           keyExtractor={(item) => item.id}
           refreshing={loading}
-          onRefresh={load}
+          onRefresh={() => undefined}
+          onEndReachedThreshold={0.5}
+          onEndReached={async () => {
+            if (!cursor || loadingMore || !hasMore) return;
+            setLoadingMore(true);
+            try {
+              const { posts: next, cursor: nextCursor } = await fetchPostsPage(
+                activeCategory,
+                zoneTag,
+                cursor
+              );
+              setOlderPosts((prev) => [...prev, ...next]);
+              setCursor(nextCursor);
+              setHasMore(next.length >= 20);
+            } finally {
+              setLoadingMore(false);
+            }
+          }}
           renderItem={({ item }) => (
             <PostItem post={item} onPress={() => navigation.navigate('BoardDetail', { postId: item.id })} />
           )}
           ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>게시글이 없습니다.</Text></View>}
+          ListFooterComponent={loadingMore ? <Text style={styles.loadingMore}>불러오는 중...</Text> : null}
         />
       )}
 
@@ -115,7 +167,7 @@ export function BoardListScreen() {
       <BoardWriteModal
         visible={writeVisible}
         onClose={() => setWriteVisible(false)}
-        onCreated={load}
+        onCreated={async () => undefined}
       />
     </View>
   );
@@ -175,4 +227,5 @@ const styles = StyleSheet.create({
     borderBottomColor: '#EEEEEE',
     alignItems: 'center',
   },
+  loadingMore: { textAlign: 'center', color: '#999', padding: 12 },
 });
