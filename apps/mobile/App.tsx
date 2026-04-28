@@ -9,6 +9,8 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { WaitTimeInputModal } from './src/components/WaitTimeInputModal';
 import { Colors } from './src/constants/colors';
 import { MOCK_REPORTS, MOCK_ZONES } from './src/constants/mockZones';
+import { BoardDetailScreen } from './src/screens/BoardDetailScreen';
+import { BoardListScreen } from './src/screens/BoardListScreen';
 import { FeedScreen } from './src/screens/FeedScreen';
 import { MapScreen } from './src/screens/MapScreen';
 import { fetchZones, subscribeActiveReports } from './src/services/firebase';
@@ -41,12 +43,23 @@ function Tabs() {
         tabBarLabelStyle: { fontSize: 11, marginTop: 2 },
         tabBarShowLabel: true,
         tabBarIcon: ({ color }) => (
-          <Feather name={route.name === '지도' ? 'map' : 'activity'} size={24} color={color} />
+          <Feather
+            name={
+              route.name === '지도'
+                ? 'map'
+                : route.name === '제보'
+                  ? 'activity'
+                  : 'message-square'
+            }
+            size={24}
+            color={color}
+          />
         ),
       })}
     >
       <Tab.Screen name="지도" component={MapScreen} />
       <Tab.Screen name="제보" component={FeedScreen} />
+      <Tab.Screen name="게시판" component={BoardListScreen} />
     </Tab.Navigator>
   );
 }
@@ -55,6 +68,7 @@ function RootStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="MainTabs" component={Tabs} />
+      <Stack.Screen name="BoardDetail" component={BoardDetailScreen} />
     </Stack.Navigator>
   );
 }

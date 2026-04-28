@@ -1,0 +1,25 @@
+{
+  "board_posts": {
+    ".read": true,
+    "$postId": {
+      ".write": "!data.exists()",
+      "status": {
+        ".write": "auth != null && root.child('admin_users').child(auth.uid).exists()"
+      },
+      "likes": {
+        ".write": true
+      }
+    }
+  },
+  "board_comments": {
+    ".read": true,
+    "$postId": {
+      "$commentId": {
+        ".write": "!data.exists()",
+        "status": {
+          ".write": "auth != null && root.child('admin_users').child(auth.uid).exists()"
+        }
+      }
+    }
+  }
+}

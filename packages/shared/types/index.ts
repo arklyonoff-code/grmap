@@ -39,3 +39,32 @@ export interface ZoneWithStatus extends Zone {
   latestReport: WaitReport | null;
   congestionLevel: 'green' | 'yellow' | 'red' | 'unknown';
 }
+
+export type PostCategory = 'free' | 'info' | 'question' | 'notice';
+export type PostStatus = 'active' | 'hidden';
+
+export interface BoardPost {
+  id: string;
+  title: string;
+  content: string;
+  nickname: string;
+  passwordHash: string;
+  category: PostCategory;
+  zoneTag: string;
+  deviceId: string;
+  likes: number;
+  commentCount: number;
+  createdAt: number;
+  status: PostStatus;
+}
+
+export interface BoardComment {
+  id: string;
+  postId: string;
+  content: string;
+  nickname: string;
+  passwordHash: string;
+  deviceId: string;
+  createdAt: number;
+  status: PostStatus;
+}

@@ -6,6 +6,8 @@
   "exports": {
     "./types": "./types/index.ts",
     "./utils/report": "./utils/report.ts",
-    "./constants/mock-zones": "./constants/mock-zones.ts"
+    "./utils/nickname": "./utils/nickname.ts",
+    "./constants/mock-zones": "./constants/mock-zones.ts",
+    "./constants/board": "./constants/board.ts"
   }
 }
