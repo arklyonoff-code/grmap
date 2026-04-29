@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /posts/{postId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll([
+          'title','content','nickname','passwordHash',
+          'category','zoneTag','deviceId','createdAt','status','likes','commentCount'
+        ])
+        && request.resource.data.title.size() <= 100
+        && request.resource.data.content.size() <= 20000
+        && request.resource.data.nickname.size() <= 20
+        && request.resource.data.status == 'active'
+        && request.resource.data.likes == 0
+        && request.resource.data.commentCount == 0;
+
+      allow update: if
+        (request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['likes']))
+        ||
+        (request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status'])
+          && request.resource.data.status in ['active','hidden','done']);
+
+      allow delete: if true;
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+
+      allow create: if
+        request.resource.data.keys().hasAll([
+          'postId','content','nickname','passwordHash','deviceId','createdAt','status'
+        ])
+        && request.resource.data.content.size() <= 500
+        && request.resource.data.nickname.size() <= 20
+        && request.resource.data.status == 'active';
+
+      allow update: if
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status'])
+        && request.resource.data.status in ['active','hidden'];
+
+      allow delete: if true;
+    }
+
+    match /admin_users/{uid} {
+      allow read, write: if
+        request.auth != null
+        && request.auth.uid == uid;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 import {
   getAuth,
   signInAnonymously,
@@ -30,7 +31,8 @@ const firebaseConfig = {
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const authInstance = getAuth(app);
 
-const db = getDatabase(app);
+export const db = getFirestore(app);
+export const rtdb = getDatabase(app);
 let cachedZones: Zone[] | null = null;
 
 async function ensureAnonymousUser(): Promise<User> {
@@ -62,7 +64,7 @@ export async function getDeviceId(): Promise<string> {
 export function subscribeActiveReports(
   callback: (reports: WaitReport[]) => void
 ): () => void {
-  const reportsRef = ref(db, '/wait_reports');
+  const reportsRef = ref(rtdb, '/wait_reports');
 
   const listener = onValue(reportsRef, (snapshot) => {
     const rawValue = snapshot.val() ?? {};
@@ -93,7 +95,7 @@ export async function submitWaitReport(
   const now = Date.now();
   const expiresAt = now + 45 * 60 * 1000;
 
-  await push(ref(db, '/wait_reports'), {
+  await push(ref(rtdb, '/wait_reports'), {
     zoneId,
     waitLevel,
     vehicleSize,
@@ -110,7 +112,7 @@ export async function submitWaitReport(
 
 export async function fetchZones(): Promise<Zone[]> {
   if (cachedZones) return cachedZones;
-  const snapshot = await get(ref(db, '/zones'));
+  const snapshot = await get(ref(rtdb, '/zones'));
   const data = snapshot.val() ?? {};
   const zones = Object.entries(data).map(([id, value]) => ({
     id,

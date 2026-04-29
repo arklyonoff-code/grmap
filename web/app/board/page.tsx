@@ -8,7 +8,7 @@ import { CATEGORY_COLORS, CATEGORY_LABELS, URGENT_CATEGORIES, ZONE_LABELS } from
 import type { BoardPost, PostCategory, WaitReport, Zone } from "@grmap/shared/types";
 import { getCongestionLevel, getElapsedText, getWaitLevelLabel } from "@grmap/shared/utils/report";
 import { fetchPostsPage, getMarketSignal, subscribePosts } from "@/services/board";
-import { db } from "@/services/firebase";
+import { rtdb } from "@/lib/firebase";
 
 const CATEGORY_FILTERS: Array<{ key: "all" | PostCategory; label: string }> = [
   { key: "all", label: "전체" },
@@ -59,7 +59,12 @@ export default function BoardListPage() {
   }, [category, zoneTag]);
 
   useEffect(() => {
-    Promise.all([get(ref(db, "/zones")), get(ref(db, "/wait_reports"))]).then(([zoneSnap, reportSnap]) => {
+    if (!rtdb) {
+      setZones([]);
+      setReports([]);
+      return;
+    }
+    Promise.all([get(ref(rtdb, "/zones")), get(ref(rtdb, "/wait_reports"))]).then(([zoneSnap, reportSnap]) => {
       const loadedZones = Object.entries(zoneSnap.val() ?? {}).map(([id, value]) => ({
         id,
         ...(value as Omit<Zone, "id">),
@@ -72,7 +77,7 @@ export default function BoardListPage() {
       setZones(loadedZones);
       setReports(loadedReports);
     });
-  }, []);
+  }, [rtdb]);
 
   const merged = useMemo(() => {
     const byId = new Map<string, BoardPost>();

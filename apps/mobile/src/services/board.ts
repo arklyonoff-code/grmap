@@ -1,12 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getApps, initializeApp } from 'firebase/app';
 import {
   addDoc,
   collection,
   doc,
   getDoc,
   getDocs,
-  getFirestore,
   increment,
   limit,
   onSnapshot,
@@ -22,20 +20,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { BoardComment, BoardPost, BoardPostType, PostCategory, PostStatus } from '@grmap/shared/types';
-
-const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY ?? 'MISSING_API_KEY',
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN ?? 'MISSING_AUTH_DOMAIN',
-  databaseURL:
-    process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL ?? 'https://example.firebaseio.com',
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID ?? 'MISSING_PROJECT_ID',
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET ?? 'MISSING_BUCKET',
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? 'MISSING_SENDER',
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID ?? 'MISSING_APP_ID',
-};
-
-const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { db } from './firebase';
 const PAGE_SIZE = 20;
 const POSTS = 'posts';
 const COMMENTS = 'comments';
@@ -187,6 +172,7 @@ export async function createPost(
     ...data,
     deviceId: data.deviceId || (await getDeviceId()),
     type: mapCategoryToType(data.category),
+    likes: 0,
     likeCount: 0,
     viewCount: 0,
     commentCount: 0,
@@ -258,7 +244,11 @@ export async function toggleLike(postId: string) {
     const initial = Boolean(likeInitialState.get(postId));
     const target = Boolean(likeTargetState.get(postId));
     if (initial !== target) {
-      await updateDoc(doc(db, POSTS, postId), { likeCount: increment(target ? 1 : -1) });
+      const delta = target ? 1 : -1;
+      await updateDoc(doc(db, POSTS, postId), {
+        likes: increment(delta),
+        likeCount: increment(delta),
+      });
     }
     likeInitialState.delete(postId);
     likeTargetState.delete(postId);
