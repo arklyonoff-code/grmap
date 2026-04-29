@@ -33,6 +33,10 @@ const likeInitialState = new Map<string, boolean>();
 const likeTargetState = new Map<string, boolean>();
 const likeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
+  return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as T;
+}
+
 async function getDeviceId() {
   const key = 'grmap_device_id';
   const existing = await AsyncStorage.getItem(key);
@@ -169,9 +173,8 @@ export async function createPost(
   data: Omit<BoardPost, 'id' | 'likes' | 'likeCount' | 'viewCount' | 'commentCount' | 'createdAt' | 'status' | 'type'>
 ) {
   console.log('createPost priceItem:', data.priceItem);
-  const createdRef = await addDoc(collection(db, POSTS), {
+  const payload = omitUndefined({
     ...data,
-    priceItem: data.priceItem ?? null,
     deviceId: data.deviceId || (await getDeviceId()),
     type: mapCategoryToType(data.category),
     likes: 0,
@@ -182,6 +185,7 @@ export async function createPost(
     createdAt: serverTimestamp(),
     status: 'active',
   });
+  const createdRef = await addDoc(collection(db, POSTS), payload);
   postsCache.clear();
   return createdRef.id;
 }

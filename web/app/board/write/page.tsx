@@ -65,7 +65,7 @@ export default function BoardWritePage() {
     try {
       setSubmitting(true);
       const passwordHash = await sha256(password.trim());
-      await createPost({
+      const payload = {
         title: title.trim(),
         content,
         nickname: nickname.trim(),
@@ -73,10 +73,11 @@ export default function BoardWritePage() {
         category,
         zoneTag,
         deviceId: "",
-        priceItem: category === "price" ? priceItem || undefined : undefined,
-        priceValue: category === "price" && priceValue !== "" ? Number(priceValue) : undefined,
-        priceUnit: category === "price" ? priceUnit : undefined,
-      });
+        ...(category === "price" && priceItem.trim() ? { priceItem: priceItem.trim() } : {}),
+        ...(category === "price" && priceValue !== "" ? { priceValue: Number(priceValue) } : {}),
+        ...(category === "price" ? { priceUnit } : {}),
+      };
+      await createPost(payload);
       router.push("/board");
     } catch (error) {
       alert(error instanceof Error ? error.message : "등록에 실패했습니다.");

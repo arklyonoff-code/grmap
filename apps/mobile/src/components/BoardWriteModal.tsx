@@ -85,7 +85,7 @@ export function BoardWriteModal({
         Crypto.CryptoDigestAlgorithm.SHA256,
         password.trim()
       );
-      await createPost({
+      const payload = {
         title: title.trim(),
         content: `<p>${content.trim().replace(/\n/g, '<br />')}</p>`,
         nickname: nickname.trim(),
@@ -93,10 +93,11 @@ export function BoardWriteModal({
         category,
         zoneTag,
         deviceId: '',
-        priceItem: category === 'price' ? priceItem || undefined : undefined,
-        priceValue: category === 'price' && priceValue ? Number(priceValue) : undefined,
-        priceUnit: category === 'price' ? priceUnit : undefined,
-      });
+        ...(category === 'price' && priceItem.trim() ? { priceItem: priceItem.trim() } : {}),
+        ...(category === 'price' && priceValue ? { priceValue: Number(priceValue) } : {}),
+        ...(category === 'price' ? { priceUnit } : {}),
+      };
+      await createPost(payload);
       await onCreated();
       reset();
       onClose();
