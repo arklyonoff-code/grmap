@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WebView } from 'react-native-webview';
 import * as Crypto from 'expo-crypto';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -35,6 +36,7 @@ export function BoardDetailScreen() {
   const postId = route.params?.postId as string;
   const [post, setPost] = useState<BoardPost | null>(null);
   const [comments, setComments] = useState<BoardComment[]>([]);
+  const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(false);
   const [nickname, setNickname] = useState(generateRandomNickname());
   const [password, setPassword] = useState('');
@@ -62,6 +64,9 @@ export function BoardDetailScreen() {
   useEffect(() => {
     if (!postId) return;
     setLoading(true);
+    AsyncStorage.getItem(`grmap_liked_${postId}`)
+      .then((value) => setLiked(value === '1'))
+      .catch(() => undefined);
     const unsubPost = subscribePost(postId, (nextPost) => {
       setPost(nextPost);
       setLoading(false);
@@ -119,11 +124,18 @@ export function BoardDetailScreen() {
           <Pressable
             onPress={async () => {
               await toggleLike(post.id);
-              const current = post.likeCount ?? post.likes ?? 0;
-              setPost((p) => (p ? { ...p, likeCount: current + 1, likes: current + 1 } : p));
+              const nextLiked = !liked;
+              setLiked(nextLiked);
+              const delta = nextLiked ? 1 : -1;
+              setPost((p) => {
+                if (!p) return p;
+                const current = p.likeCount ?? p.likes ?? 0;
+                const nextCount = Math.max(0, current + delta);
+                return { ...p, likeCount: nextCount, likes: nextCount };
+              });
             }}
           >
-            <Text style={styles.like}>♥ {post.likeCount ?? post.likes ?? 0}</Text>
+            <Text style={[styles.like, !liked && { color: '#CCC' }]}>♥ {post.likeCount ?? post.likes ?? 0}</Text>
           </Pressable>
           <Text style={styles.meta}>💬 {comments.length}</Text>
           <Pressable

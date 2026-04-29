@@ -233,13 +233,13 @@ function MarketSignalSection({ signalPosts }: { signalPosts: BoardPost[] }) {
         MARKET SIGNAL
       </div>
       {signalPosts.map((post) => (
-        <a key={post.id} href={`/board/detail?id=${post.id}`} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", textDecoration: "none" }}>
+        <Link key={post.id} href={{ pathname: "/board/detail", query: { id: post.id } }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", textDecoration: "none" }}>
           <span style={{ fontSize: 11, color: "#E24B4A", fontWeight: 700, width: 16 }}>🔥</span>
           <span style={{ fontSize: 14, color: "#111", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {post.title}
           </span>
           <span style={{ fontSize: 12, color: "#aaa", flexShrink: 0 }}>♥{post.likeCount ?? post.likes ?? 0}</span>
-        </a>
+        </Link>
       ))}
     </div>
   );
@@ -251,7 +251,7 @@ function PostListItem({ post }: { post: BoardPost }) {
   const catColor = CATEGORY_COLORS[post.category];
 
   return (
-    <a href={`/board/detail?id=${post.id}`} style={{ display: "block", padding: "14px 16px", borderBottom: "0.5px solid #EEEEEE", opacity: isDone ? 0.45 : 1, textDecoration: "none" }}>
+    <Link href={{ pathname: "/board/detail", query: { id: post.id } }} style={{ display: "block", padding: "14px 16px", borderBottom: "0.5px solid #EEEEEE", opacity: isDone ? 0.45 : 1, textDecoration: "none" }}>
       <div style={{ display: "flex", gap: 6, marginBottom: 6, alignItems: "center" }}>
         <span style={{ fontSize: 11, padding: "2px 7px", borderRadius: 99, background: catColor.bg, color: catColor.text, fontWeight: 500 }}>
           {isUrgent ? "⚡" : ""}{CATEGORY_LABELS[post.category]}
@@ -279,7 +279,7 @@ function PostListItem({ post }: { post: BoardPost }) {
       <div style={{ fontSize: 12, color: "#aaa" }}>
         {post.nickname} · 💬{post.commentCount} · ♥{post.likeCount ?? post.likes ?? 0}
       </div>
-    </a>
+    </Link>
   );
 }
 
@@ -296,7 +296,7 @@ function PriceListView({ posts }: { posts: BoardPost[] }) {
       {posts.map((post) => {
         const diff = post.priceYesterday && post.priceValue ? post.priceValue - post.priceYesterday : null;
         return (
-          <a key={post.id} href={`/board/detail?id=${post.id}`} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 80px", padding: "12px 16px", borderBottom: "0.5px solid #EEEEEE", alignItems: "center", textDecoration: "none", color: "inherit" }}>
+          <Link key={post.id} href={{ pathname: "/board/detail", query: { id: post.id } }} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 80px 80px", padding: "12px 16px", borderBottom: "0.5px solid #EEEEEE", alignItems: "center", textDecoration: "none", color: "inherit" }}>
             <span style={{ fontSize: 14, fontWeight: 500 }}>{post.priceItem || post.title}</span>
             <span style={{ fontSize: 13, color: "#555" }}>{ZONE_LABELS[post.zoneTag as keyof typeof ZONE_LABELS] || "전체"}</span>
             <span style={{ fontSize: 14, textAlign: "right", fontWeight: 500, color: "#111" }}>
@@ -312,7 +312,7 @@ function PriceListView({ posts }: { posts: BoardPost[] }) {
               )}
               <div style={{ fontSize: 11, color: "#aaa" }}>{getElapsedText(post.createdAt)}</div>
             </div>
-          </a>
+          </Link>
         );
       })}
 
