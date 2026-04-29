@@ -168,8 +168,10 @@ export async function incrementPostView(postId: string) {
 export async function createPost(
   data: Omit<BoardPost, 'id' | 'likes' | 'likeCount' | 'viewCount' | 'commentCount' | 'createdAt' | 'status' | 'type'>
 ) {
+  console.log('createPost priceItem:', data.priceItem);
   const createdRef = await addDoc(collection(db, POSTS), {
     ...data,
+    priceItem: data.priceItem ?? null,
     deviceId: data.deviceId || (await getDeviceId()),
     type: mapCategoryToType(data.category),
     likes: 0,
