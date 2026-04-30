@@ -19,9 +19,15 @@ export function BottomTab() {
         지도
       </Link>
       <Link href="/mission" className={`tab-link ${pathname === "/mission" ? "active" : ""}`}>
-        <span style={{ fontSize: 16 }} role="img" aria-label="오늘 미션">
-          🎯
-        </span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" />
+          <circle cx="12" cy="12" r="6" />
+          <circle cx="12" cy="12" r="2" />
+          <line x1="12" y1="2" x2="12" y2="4" />
+          <line x1="12" y1="20" x2="12" y2="22" />
+          <line x1="2" y1="12" x2="4" y2="12" />
+          <line x1="20" y1="12" x2="22" y2="12" />
+        </svg>
         오늘 미션
       </Link>
       <Link href="/board" className={`tab-link ${isBoard ? "active" : ""}`}>

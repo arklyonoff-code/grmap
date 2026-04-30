@@ -3,7 +3,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect } from 'react';
-import { Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,15 +43,11 @@ function Tabs() {
         tabBarLabelStyle: { fontSize: 11, marginTop: 2 },
         tabBarShowLabel: true,
         tabBarIcon: ({ color }) => (
-          route.name === '미션' ? (
-            <Text style={{ fontSize: 18 }}>🎯</Text>
-          ) : (
-            <Feather
-              name={route.name === '지도' ? 'map' : 'message-square'}
-              size={24}
-              color={color}
-            />
-          )
+          <Feather
+            name={route.name === '지도' ? 'map' : route.name === '미션' ? 'target' : 'message-square'}
+            size={24}
+            color={color}
+          />
         ),
       })}
     >

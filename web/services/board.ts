@@ -17,6 +17,7 @@ import {
   writeBatch,
   type QueryDocumentSnapshot,
   type DocumentData,
+  type FirestoreError,
 } from 'firebase/firestore';
 import type { BoardComment, BoardPost, BoardPostType, PostCategory, PostStatus } from '@grmap/shared/types';
 import { db } from '@/lib/firebase';
@@ -38,6 +39,19 @@ const likeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
   return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as T;
+}
+
+function isIndexError(error: unknown): boolean {
+  return (error as FirestoreError | undefined)?.code === 'failed-precondition';
+}
+
+function applyPostFilters(posts: BoardPost[], category?: PostCategory, zoneTag?: string): BoardPost[] {
+  return posts.filter((post) => {
+    if (post.status === 'hidden') return false;
+    if (category && post.category !== category) return false;
+    if (zoneTag && zoneTag !== 'all' && post.zoneTag !== zoneTag) return false;
+    return true;
+  });
 }
 
 function getDeviceId(): string {
@@ -133,12 +147,36 @@ export function subscribePosts(
   ];
   if (category) constraints.push(where('category', '==', category));
   if (zoneTag && zoneTag !== 'all') constraints.push(where('zoneTag', '==', zoneTag));
-  const q = query(collection(db, POSTS), ...constraints);
-  return onSnapshot(q, (snap) => {
-    let posts = snap.docs.map((d) => mapPost(d.id, d.data() as Record<string, unknown>));
-    posts = posts.filter((post) => post.status !== 'hidden');
-    callback(posts);
-  });
+  const primaryQuery = query(collection(db, POSTS), ...constraints);
+  let fallbackUnsubscribe: (() => void) | null = null;
+  const primaryUnsubscribe = onSnapshot(
+    primaryQuery,
+    (snap) => {
+      const posts = applyPostFilters(
+        snap.docs.map((d) => mapPost(d.id, d.data() as Record<string, unknown>)),
+        category,
+        zoneTag
+      );
+      callback(posts);
+    },
+    (error) => {
+      if (isIndexError(error) && (category || (zoneTag && zoneTag !== 'all')) && !fallbackUnsubscribe) {
+        const fallbackQuery = query(collection(db, POSTS), orderBy('createdAt', 'desc'), limit(PAGE_SIZE));
+        fallbackUnsubscribe = onSnapshot(fallbackQuery, (snap) => {
+          const posts = applyPostFilters(
+            snap.docs.map((d) => mapPost(d.id, d.data() as Record<string, unknown>)),
+            category,
+            zoneTag
+          );
+          callback(posts);
+        });
+      }
+    }
+  );
+  return () => {
+    primaryUnsubscribe();
+    fallbackUnsubscribe?.();
+  };
 }
 
 function postsCacheKey(category?: PostCategory, zoneTag?: string) {
@@ -156,10 +194,31 @@ export async function fetchPostsPage(
   if (category) constraints.push(where('category', '==', category));
   if (zoneTag && zoneTag !== 'all') constraints.push(where('zoneTag', '==', zoneTag));
   if (cursor) constraints.push(startAfter(cursor));
-  const snap = await getDocs(query(collection(db, POSTS), ...constraints));
-  let posts = snap.docs.map((d) => mapPost(d.id, d.data() as Record<string, unknown>));
-  posts = posts.filter((post) => post.status !== 'hidden');
-  return { posts, cursor: snap.docs.length ? snap.docs[snap.docs.length - 1] : null };
+  try {
+    const snap = await getDocs(query(collection(db, POSTS), ...constraints));
+    const posts = applyPostFilters(
+      snap.docs.map((d) => mapPost(d.id, d.data() as Record<string, unknown>)),
+      category,
+      zoneTag
+    );
+    return { posts, cursor: snap.docs.length ? snap.docs[snap.docs.length - 1] : null };
+  } catch (error) {
+    if (!isIndexError(error) || (!category && (!zoneTag || zoneTag === 'all'))) {
+      throw error;
+    }
+    const fallbackConstraints: Array<ReturnType<typeof orderBy> | ReturnType<typeof limit> | ReturnType<typeof startAfter>> = [
+      orderBy('createdAt', 'desc'),
+      limit(PAGE_SIZE),
+    ];
+    if (cursor) fallbackConstraints.push(startAfter(cursor));
+    const snap = await getDocs(query(collection(db, POSTS), ...fallbackConstraints));
+    const posts = applyPostFilters(
+      snap.docs.map((d) => mapPost(d.id, d.data() as Record<string, unknown>)),
+      category,
+      zoneTag
+    );
+    return { posts, cursor: snap.docs.length ? snap.docs[snap.docs.length - 1] : null };
+  }
 }
 
 export async function fetchPosts(category?: PostCategory, zoneTag?: string): Promise<BoardPost[]> {
@@ -242,20 +301,41 @@ export async function fetchComments(postId: string): Promise<BoardComment[]> {
 }
 
 export function subscribeComments(postId: string, callback: (comments: BoardComment[]) => void): () => void {
-  const q = query(
+  const primaryQuery = query(
     collection(db, COMMENTS),
     where('postId', '==', postId),
     orderBy('createdAt', 'desc'),
     limit(COMMENT_PAGE_SIZE)
   );
-  return onSnapshot(q, (snap) => {
-    const comments = snap.docs
-      .map((d) => mapComment(d.id, d.data() as Record<string, unknown>))
-      .filter((comment) => comment.status !== 'hidden')
-      .reverse();
-    commentsCache.set(postId, { at: Date.now(), data: comments });
-    callback(comments);
-  });
+  let fallbackUnsubscribe: (() => void) | null = null;
+  const primaryUnsubscribe = onSnapshot(
+    primaryQuery,
+    (snap) => {
+      const comments = snap.docs
+        .map((d) => mapComment(d.id, d.data() as Record<string, unknown>))
+        .filter((comment) => comment.status !== 'hidden')
+        .reverse();
+      commentsCache.set(postId, { at: Date.now(), data: comments });
+      callback(comments);
+    },
+    (error) => {
+      if (isIndexError(error) && !fallbackUnsubscribe) {
+        const fallbackQuery = query(collection(db, COMMENTS), orderBy('createdAt', 'desc'), limit(COMMENT_PAGE_SIZE));
+        fallbackUnsubscribe = onSnapshot(fallbackQuery, (snap) => {
+          const comments = snap.docs
+            .map((d) => mapComment(d.id, d.data() as Record<string, unknown>))
+            .filter((comment) => comment.postId === postId && comment.status !== 'hidden')
+            .reverse();
+          commentsCache.set(postId, { at: Date.now(), data: comments });
+          callback(comments);
+        });
+      }
+    }
+  );
+  return () => {
+    primaryUnsubscribe();
+    fallbackUnsubscribe?.();
+  };
 }
 
 export async function createComment(

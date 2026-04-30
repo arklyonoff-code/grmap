@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { CATEGORY_LABELS, URGENT_CATEGORIES, ZONE_LABELS } from '@grmap/shared/constants/board';
 import { BoardPost, PostCategory } from '@grmap/shared/types';
@@ -23,6 +24,7 @@ const CATEGORY_TABS: Array<{ key: 'all' | PostCategory; label: string }> = [
 
 export function BoardListScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [posts, setPosts] = useState<BoardPost[]>([]);
   const [olderPosts, setOlderPosts] = useState<BoardPost[]>([]);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
@@ -75,7 +77,7 @@ export function BoardListScreen() {
   const activeCategory = category === 'all' ? undefined : category;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
         {CATEGORY_TABS.map((item) => (
           <Pressable

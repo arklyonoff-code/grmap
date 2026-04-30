@@ -15,6 +15,7 @@ import {
   Timestamp,
   type QueryDocumentSnapshot,
   type DocumentData,
+  type FirestoreError,
   updateDoc,
   where,
   writeBatch,
@@ -35,6 +36,19 @@ const likeTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 function omitUndefined<T extends Record<string, unknown>>(obj: T): T {
   return Object.fromEntries(Object.entries(obj).filter(([, value]) => value !== undefined)) as T;
+}
+
+function isIndexError(error: unknown): boolean {
+  return (error as FirestoreError | undefined)?.code === 'failed-precondition';
+}
+
+function applyPostFilters(posts: BoardPost[], category?: PostCategory, zoneTag?: string): BoardPost[] {
+  return posts.filter((post) => {
+    if (post.status === 'hidden') return false;
+    if (category && post.category !== category) return false;
+    if (zoneTag && zoneTag !== 'all' && post.zoneTag !== zoneTag) return false;
+    return true;
+  });
 }
 
 async function getDeviceId() {
@@ -104,12 +118,43 @@ export function subscribePosts(callback: (posts: BoardPost[]) => void, category?
   ];
   if (category) constraints.push(where('category', '==', category));
   if (zoneTag && zoneTag !== 'all') constraints.push(where('zoneTag', '==', zoneTag));
-  const q = query(collection(db, POSTS), ...constraints);
-  return onSnapshot(q, (snapshot) => {
-    let posts = snapshot.docs.map((item) => mapPost(item.id, item.data() as Record<string, unknown>));
-    posts = posts.filter((post) => post.status !== 'hidden');
-    callback(posts);
-  });
+  const primaryQuery = query(collection(db, POSTS), ...constraints);
+  let fallbackUnsubscribe: (() => void) | null = null;
+  const primaryUnsubscribe = onSnapshot(
+    primaryQuery,
+    (snapshot) => {
+      const posts = applyPostFilters(
+        snapshot.docs.map((item) => mapPost(item.id, item.data() as Record<string, unknown>)),
+        category,
+        zoneTag
+      );
+      callback(posts);
+    },
+    (error) => {
+      if (isIndexError(error) && (category || (zoneTag && zoneTag !== 'all')) && !fallbackUnsubscribe) {
+        const fallbackQuery = query(collection(db, POSTS), orderBy('createdAt', 'desc'), limit(PAGE_SIZE));
+        fallbackUnsubscribe = onSnapshot(
+          fallbackQuery,
+          (snapshot) => {
+            const posts = applyPostFilters(
+              snapshot.docs.map((item) => mapPost(item.id, item.data() as Record<string, unknown>)),
+              category,
+              zoneTag
+            );
+            callback(posts);
+          },
+          () => callback([])
+        );
+        return;
+      }
+      console.error('subscribePosts failed:', error);
+      callback([]);
+    }
+  );
+  return () => {
+    primaryUnsubscribe();
+    fallbackUnsubscribe?.();
+  };
 }
 
 function postsCacheKey(category?: PostCategory, zoneTag?: string) {
@@ -127,10 +172,31 @@ export async function fetchPostsPage(
   if (category) constraints.push(where('category', '==', category));
   if (zoneTag && zoneTag !== 'all') constraints.push(where('zoneTag', '==', zoneTag));
   if (cursor) constraints.push(startAfter(cursor));
-  const snapshot = await getDocs(query(collection(db, POSTS), ...constraints));
-  let posts = snapshot.docs.map((item) => mapPost(item.id, item.data() as Record<string, unknown>));
-  posts = posts.filter((post) => post.status !== 'hidden');
-  return { posts, cursor: snapshot.docs.length ? snapshot.docs[snapshot.docs.length - 1] : null };
+  try {
+    const snapshot = await getDocs(query(collection(db, POSTS), ...constraints));
+    const posts = applyPostFilters(
+      snapshot.docs.map((item) => mapPost(item.id, item.data() as Record<string, unknown>)),
+      category,
+      zoneTag
+    );
+    return { posts, cursor: snapshot.docs.length ? snapshot.docs[snapshot.docs.length - 1] : null };
+  } catch (error) {
+    if (!isIndexError(error) || (!category && (!zoneTag || zoneTag === 'all'))) {
+      throw error;
+    }
+    const fallbackConstraints: Array<ReturnType<typeof orderBy> | ReturnType<typeof limit> | ReturnType<typeof startAfter>> = [
+      orderBy('createdAt', 'desc'),
+      limit(PAGE_SIZE),
+    ];
+    if (cursor) fallbackConstraints.push(startAfter(cursor));
+    const snapshot = await getDocs(query(collection(db, POSTS), ...fallbackConstraints));
+    const posts = applyPostFilters(
+      snapshot.docs.map((item) => mapPost(item.id, item.data() as Record<string, unknown>)),
+      category,
+      zoneTag
+    );
+    return { posts, cursor: snapshot.docs.length ? snapshot.docs[snapshot.docs.length - 1] : null };
+  }
 }
 
 export async function fetchPosts(category?: PostCategory, zoneTag?: string) {
@@ -204,15 +270,36 @@ export async function fetchComments(postId: string) {
 }
 
 export function subscribeComments(postId: string, callback: (comments: BoardComment[]) => void) {
-  const q = query(collection(db, COMMENTS), where('postId', '==', postId), orderBy('createdAt', 'desc'), limit(COMMENT_PAGE_SIZE));
-  return onSnapshot(q, (snapshot) => {
-    const comments = snapshot.docs
-      .map((item) => mapComment(item.id, item.data() as Record<string, unknown>))
-      .filter((item) => item.status !== 'hidden')
-      .reverse();
-    commentsCache.set(postId, { at: Date.now(), data: comments });
-    callback(comments);
-  });
+  const primaryQuery = query(collection(db, COMMENTS), where('postId', '==', postId), orderBy('createdAt', 'desc'), limit(COMMENT_PAGE_SIZE));
+  let fallbackUnsubscribe: (() => void) | null = null;
+  const primaryUnsubscribe = onSnapshot(
+    primaryQuery,
+    (snapshot) => {
+      const comments = snapshot.docs
+        .map((item) => mapComment(item.id, item.data() as Record<string, unknown>))
+        .filter((item) => item.status !== 'hidden')
+        .reverse();
+      commentsCache.set(postId, { at: Date.now(), data: comments });
+      callback(comments);
+    },
+    (error) => {
+      if (isIndexError(error) && !fallbackUnsubscribe) {
+        const fallbackQuery = query(collection(db, COMMENTS), orderBy('createdAt', 'desc'), limit(COMMENT_PAGE_SIZE));
+        fallbackUnsubscribe = onSnapshot(fallbackQuery, (snapshot) => {
+          const comments = snapshot.docs
+            .map((item) => mapComment(item.id, item.data() as Record<string, unknown>))
+            .filter((item) => item.postId === postId && item.status !== 'hidden')
+            .reverse();
+          commentsCache.set(postId, { at: Date.now(), data: comments });
+          callback(comments);
+        });
+      }
+    }
+  );
+  return () => {
+    primaryUnsubscribe();
+    fallbackUnsubscribe?.();
+  };
 }
 
 export async function createComment(
