@@ -18,11 +18,11 @@ export function BottomTab() {
         </svg>
         지도
       </Link>
-      <Link href="/feed" className={`tab-link ${pathname === "/feed" ? "active" : ""}`}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-        </svg>
-        제보
+      <Link href="/mission" className={`tab-link ${pathname === "/mission" ? "active" : ""}`}>
+        <span style={{ fontSize: 16 }} role="img" aria-label="오늘 미션">
+          🎯
+        </span>
+        오늘 미션
       </Link>
       <Link href="/board" className={`tab-link ${isBoard ? "active" : ""}`}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

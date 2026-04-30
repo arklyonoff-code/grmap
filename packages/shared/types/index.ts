@@ -83,3 +83,21 @@ export interface BoardComment {
   createdAt: number;
   status: PostStatus;
 }
+
+export interface MissionStamp {
+  deviceId: string;
+  totalStamps: number;
+  lastCheckinDate: string;
+  consecutiveDays: number;
+  weeklyStamps: number;
+  badges: string[];
+  nickname: string;
+  weekKey?: string;
+}
+
+export interface TodayMissions {
+  checkin: boolean;
+  waittime: boolean;
+  price: boolean;
+  date: string;
+}

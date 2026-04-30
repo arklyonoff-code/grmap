@@ -10,6 +10,7 @@ import { CATEGORY_LABELS, ZONE_LABELS } from "@grmap/shared/constants/board";
 import type { PostCategory } from "@grmap/shared/types";
 import { generateRandomNickname } from "@grmap/shared/utils/nickname";
 import { createPost } from "@/services/board";
+import { completeMission, getOrCreateDeviceId } from "@/services/mission";
 import { sha256 } from "@/utils/hash";
 
 const CATEGORIES: PostCategory[] = ["free", "info", "question", "wanted", "selling", "price"];
@@ -21,7 +22,14 @@ export default function BoardWritePage() {
     return localStorage.getItem("grmap_nickname") || generateRandomNickname();
   });
   const [password, setPassword] = useState("");
-  const [category, setCategory] = useState<PostCategory>("free");
+  const initialCategory = (() => {
+    if (typeof window === "undefined") return "free";
+    const value = new URLSearchParams(window.location.search).get("category");
+    return (value as PostCategory) || "free";
+  })();
+  const [category, setCategory] = useState<PostCategory>(
+    CATEGORIES.includes(initialCategory) ? initialCategory : "free"
+  );
   const [zoneTag, setZoneTag] = useState<keyof typeof ZONE_LABELS>("all");
   const [title, setTitle] = useState("");
   const [priceItem, setPriceItem] = useState("");
@@ -78,6 +86,11 @@ export default function BoardWritePage() {
         ...(category === "price" ? { priceUnit } : {}),
       };
       await createPost(payload);
+      if (category === "price") {
+        const deviceId = getOrCreateDeviceId();
+        const missionNickname = localStorage.getItem("grmap_nickname") || nickname.trim() || "익명";
+        await completeMission("price", deviceId, missionNickname, 2);
+      }
       router.push("/board");
     } catch (error) {
       alert(error instanceof Error ? error.message : "등록에 실패했습니다.");

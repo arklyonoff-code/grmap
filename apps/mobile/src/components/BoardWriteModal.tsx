@@ -16,6 +16,7 @@ import { CATEGORY_LABELS, ZONE_LABELS } from '@grmap/shared/constants/board';
 import { PostCategory } from '@grmap/shared/types';
 import { generateRandomNickname } from '@grmap/shared/utils/nickname';
 import { createPost } from '../services/board';
+import { completeMission, getOrCreateMissionDeviceId } from '../services/mission';
 
 const CATEGORIES: PostCategory[] = ['free', 'info', 'question', 'wanted', 'selling', 'price'];
 
@@ -98,6 +99,10 @@ export function BoardWriteModal({
         ...(category === 'price' ? { priceUnit } : {}),
       };
       await createPost(payload);
+      if (category === 'price') {
+        const deviceId = await getOrCreateMissionDeviceId();
+        await completeMission('price', deviceId, nickname.trim() || '익명', 2);
+      }
       await onCreated();
       reset();
       onClose();

@@ -8,6 +8,7 @@
     "./utils/report": "./utils/report.ts",
     "./utils/nickname": "./utils/nickname.ts",
     "./constants/mock-zones": "./constants/mock-zones.ts",
-    "./constants/board": "./constants/board.ts"
+    "./constants/board": "./constants/board.ts",
+    "./constants/mission": "./constants/mission.ts"
   }
 }

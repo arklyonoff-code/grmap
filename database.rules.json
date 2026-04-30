@@ -1,0 +1,12 @@
+{
+  "rules": {
+    ".read": true,
+    ".write": true,
+    "mission_stamps": {
+      ".read": true,
+      "$deviceId": {
+        ".write": true
+      }
+    }
+  }
+}

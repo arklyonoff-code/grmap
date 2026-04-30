@@ -8,11 +8,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MOCK_ZONES } from '../constants/mockZones';
 import { Colors } from '../constants/colors';
 import { Radius, Spacing, Typography } from '../constants/typography';
 import { submitWaitReport } from '../services/firebase';
+import { completeMission, getOrCreateMissionDeviceId } from '../services/mission';
 import { VehicleSize, WaitLevel } from '@grmap/shared/types';
 import { getCongestionLevel } from '@grmap/shared/utils/report';
 import { useAppStore } from '../stores/useAppStore';
@@ -82,6 +84,9 @@ export function WaitTimeInputModal({ visible, initialZoneId, onClose }: Props) {
     let isDone = false;
     try {
       await submitWaitReport(zoneId, waitLevel, vehicleSize);
+      const deviceId = await getOrCreateMissionDeviceId();
+      const nickname = (await AsyncStorage.getItem('grmap_nickname')) || '익명';
+      await completeMission('waittime', deviceId, nickname, 2);
       setSubmitState('done');
       isDone = true;
       setTimeout(() => closeAndReset(), 1200);
