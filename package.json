@@ -12,7 +12,10 @@
     "admin": "npm run dev --workspace=apps/admin",
     "mobile": "npm run start --workspace=apps/mobile",
     "build:web": "npm run build --workspace=web",
-    "build:admin": "npm run build --workspace=apps/admin"
+    "build:admin": "npm run build --workspace=apps/admin",
+    "deploy:cf": "npm run build:web && wrangler pages deploy web/out --project-name=grmap-web"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "wrangler": "4.90.0"
+  }
 }

@@ -1,8 +1,12 @@
 name = "grmap-web"
 compatibility_date = "2024-01-01"
 
-[site]
-bucket = "./web/out"
-
-[build]
-command = "npm ci && npm run build:web"
+# Cloudflare Pages — 빌드 산출물은 Next static export: web/out (루트의 web/ 패키지)
+#
+# [Git 연동] Workers & Pages → 프로젝트 → 빌드 설정:
+#   · 프레임워크: None
+#   · 루트 디렉터리: /
+#   · 빌드 명령:    npm ci && npm run build:web
+#   · 빌드 출력:    web/out   ← out 만 넣으면 안 됨 (모노레포)
+#
+# [CLI] 저장소 루트에서: npm run deploy:cf
