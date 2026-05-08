@@ -3,6 +3,7 @@ import { get, ref, update } from 'firebase/database';
 import { BADGES, type BadgeKey } from '@grmap/shared/constants/mission';
 import type { MissionStamp, TodayMissions } from '@grmap/shared/types';
 import { rtdb } from './firebase';
+import { trackEvent } from './analytics';
 
 type MissionType = 'checkin' | 'waittime' | 'price';
 
@@ -163,6 +164,8 @@ export async function completeMission(
     Number(updates.consecutiveDays ?? current.consecutiveDays),
     (updates.badges as string[] | undefined) ?? current.badges
   );
+  await trackEvent('mission_complete', { mission_type: type });
+  if (type === 'checkin') await trackEvent('checkin_complete');
   return true;
 }
 

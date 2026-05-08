@@ -7,6 +7,7 @@ import { DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { CATEGORY_LABELS, URGENT_CATEGORIES, ZONE_LABELS } from '@grmap/shared/constants/board';
 import { BoardPost, PostCategory } from '@grmap/shared/types';
 import { BoardWriteModal } from '../components/BoardWriteModal';
+import { GRmapBannerAd } from '../components/BannerAd';
 import { PostItem } from '../components/PostItem';
 import { fetchPostsPage, subscribePosts } from '../services/board';
 import { getElapsedText } from '@grmap/shared/utils/report';
@@ -104,8 +105,10 @@ export function BoardListScreen() {
         ))}
       </ScrollView>
 
+      <View style={{ flex: 1 }}>
       {category === 'price' ? (
         <FlatList
+          style={{ flex: 1 }}
           data={pricePosts}
           keyExtractor={(item) => item.id}
           refreshing={loading}
@@ -127,12 +130,19 @@ export function BoardListScreen() {
               setLoadingMore(false);
             }
           }}
-          renderItem={({ item }) => <PriceListItem post={item} onPress={() => navigation.navigate('BoardDetail', { postId: item.id })} />}
-          ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>오늘 등록된 시세 정보가 없어요</Text></View>}
+          renderItem={({ item }) => (
+            <PriceListItem post={item} onPress={() => navigation.navigate('BoardDetail', { postId: item.id })} />
+          )}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>오늘 등록된 시세 정보가 없어요</Text>
+            </View>
+          }
           ListFooterComponent={loadingMore ? <Text style={styles.loadingMore}>불러오는 중...</Text> : null}
         />
       ) : (
         <FlatList
+          style={{ flex: 1 }}
           data={sortedPosts}
           keyExtractor={(item) => item.id}
           refreshing={loading}
@@ -157,12 +167,20 @@ export function BoardListScreen() {
           renderItem={({ item }) => (
             <PostItem post={item} onPress={() => navigation.navigate('BoardDetail', { postId: item.id })} />
           )}
-          ListEmptyComponent={<View style={styles.empty}><Text style={styles.emptyText}>게시글이 없습니다.</Text></View>}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>게시글이 없습니다.</Text>
+            </View>
+          }
           ListFooterComponent={loadingMore ? <Text style={styles.loadingMore}>불러오는 중...</Text> : null}
         />
       )}
 
-      <Pressable style={styles.fab} onPress={() => setWriteVisible(true)}>
+      </View>
+
+      <GRmapBannerAd />
+
+      <Pressable style={[styles.fab, { bottom: 88 + insets.bottom }]} onPress={() => setWriteVisible(true)}>
         <Feather name="edit-2" size={20} color="#FFF" />
       </Pressable>
 
@@ -212,7 +230,6 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 16,
-    bottom: 24,
     width: 52,
     height: 52,
     borderRadius: 26,

@@ -8,6 +8,7 @@ import { Colors } from '../constants/colors';
 import { Radius, Spacing } from '../constants/typography';
 import { GARAK_CENTER } from '../constants/zones';
 import { useAppStore } from '../stores/useAppStore';
+import { trackEvent } from '../services/analytics';
 import { ZoneWithStatus } from '@grmap/shared/types';
 import { getCongestionLevel } from '@grmap/shared/utils/report';
 
@@ -64,7 +65,10 @@ export function MapScreen() {
             key={zone.id}
             zone={zone}
             isSelected={selectedZone?.id === zone.id}
-            onPress={() => setSelectedZone(zone)}
+            onPress={() => {
+              void trackEvent('zone_marker_tap', { zone_id: zone.id });
+              setSelectedZone(zone);
+            }}
           />
         ))}
       </MapView>

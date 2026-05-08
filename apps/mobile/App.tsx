@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect } from 'react';
+import mobileAds from 'react-native-google-mobile-ads';
 import { Feather } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ import { MapScreen } from './src/screens/MapScreen';
 import { MissionScreen } from './src/screens/MissionScreen';
 import { fetchZones, subscribeActiveReports } from './src/services/firebase';
 import { useAppStore } from './src/stores/useAppStore';
+import { trackEvent } from './src/services/analytics';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -73,6 +75,16 @@ export default function App() {
   const isWaitModalVisible = useAppStore((state) => state.isWaitModalVisible);
   const waitModalZoneId = useAppStore((state) => state.waitModalZoneId);
   const closeWaitModal = useAppStore((state) => state.closeWaitModal);
+
+  useEffect(() => {
+    trackEvent('app_open');
+  }, []);
+
+  useEffect(() => {
+    mobileAds()
+      .initialize()
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     fetchZones()
