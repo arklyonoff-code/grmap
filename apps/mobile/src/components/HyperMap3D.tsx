@@ -12,8 +12,26 @@ type Props = {
 };
 
 function buildHyperMapDocument(): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/><style>html,body{margin:0;touch-action:manipulation;overflow:hidden;background:#252830;}canvas{display:block;width:100%;height:100%;}</style></head><body><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script>${HYPER_MAP_SCENE_SCRIPT}
-if (window.THREE && window.__hyperMapInit) window.__hyperMapInit();
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/><style>html,body{margin:0;padding:0;width:100%;height:100%;min-height:100%;min-width:100%;touch-action:manipulation;overflow:hidden;background:#252830;position:fixed;inset:0;}canvas{display:block;width:100%!important;height:100%!important;}</style></head><body><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script>${HYPER_MAP_SCENE_SCRIPT}
+(function(){
+  if (typeof THREE === 'undefined') return;
+  var tries = 0;
+  function boot(){
+    var w = window.innerWidth || document.documentElement.clientWidth || 0;
+    var h = window.innerHeight || document.documentElement.clientHeight || 0;
+    if ((w < 40 || h < 40) && tries++ < 150) { requestAnimationFrame(boot); return; }
+    if (window.__hyperMapBooted) return;
+    window.__hyperMapBooted = true;
+    try {
+      if (window.__hyperMapInit) window.__hyperMapInit();
+    } catch (e) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'hyperMapError', message: String(e && e.message || e) }));
+      }
+    }
+  }
+  requestAnimationFrame(boot);
+})();
 </script></body></html>`;
 }
 
@@ -59,12 +77,17 @@ export function HyperMap3D({ zones, selectedZoneId, onZoneTap }: Props) {
       <WebView
         ref={ref}
         style={styles.web}
-        source={{ html }}
+        containerStyle={styles.webContainer}
+        source={{ html, baseUrl: 'https://cdnjs.cloudflare.com/' }}
         originWhitelist={['*']}
-        onLoadEnd={pushZones}
+        onLoadEnd={() => {
+          pushZones();
+          setTimeout(pushZones, 80);
+          setTimeout(pushZones, 400);
+        }}
         onMessage={(ev) => {
           try {
-            const msg = JSON.parse(ev.nativeEvent.data) as { type?: string; zoneId?: string };
+            const msg = JSON.parse(ev.nativeEvent.data) as { type?: string; zoneId?: string; message?: string };
             if (msg.type === 'zoneTap' && msg.zoneId) onZoneTap(msg.zoneId);
           } catch {
             /* ignore */
@@ -76,7 +99,8 @@ export function HyperMap3D({ zones, selectedZoneId, onZoneTap }: Props) {
         scrollEnabled={false}
         bounces={false}
         setSupportMultipleWindows={false}
-        androidLayerType="hardware"
+        nestedScrollEnabled={false}
+        overScrollMode="never"
         allowsInlineMediaPlayback
       />
     </View>
@@ -84,6 +108,11 @@ export function HyperMap3D({ zones, selectedZoneId, onZoneTap }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: '#252830' },
-  web: { flex: 1, backgroundColor: 'transparent' },
+  wrap: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#252830',
+    zIndex: 0,
+  },
+  webContainer: { flex: 1, width: '100%', height: '100%', backgroundColor: '#252830' },
+  web: { flex: 1, width: '100%', height: '100%', backgroundColor: '#252830', opacity: 0.999 },
 });

@@ -96,14 +96,29 @@ function addPalletStack(x, z) {
   scene.add(g);
 }
 
+function viewportWH() {
+  var w = window.innerWidth || document.documentElement.clientWidth || 0;
+  var h = window.innerHeight || document.documentElement.clientHeight || 0;
+  if (window.visualViewport && window.visualViewport.width > 0) {
+    w = Math.max(w, window.visualViewport.width);
+    h = Math.max(h, window.visualViewport.height);
+  }
+  if (w < 48 || h < 48) {
+    w = Math.max(w, 390);
+    h = Math.max(h, 720);
+  }
+  return { w: w, h: h };
+}
+
 function buildBaseScene() {
   clock = new THREE.Clock();
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x252830);
   scene.fog = new THREE.Fog(0x252830, 12, 52);
 
-  var w = window.innerWidth;
-  var h = window.innerHeight;
+  var vp = viewportWH();
+  var w = vp.w;
+  var h = vp.h;
   camera = new THREE.PerspectiveCamera(52, w / h, 0.1, 120);
   camera.position.set(0, 2.35, 12.5);
   camera.lookAt(0, 1.15, -10);
@@ -197,13 +212,16 @@ function buildBaseScene() {
   }
 
   function onResize() {
-    var nw = window.innerWidth;
-    var nh = window.innerHeight;
+    var nw = viewportWH().w;
+    var nh = viewportWH().h;
     camera.aspect = nw / nh;
     camera.updateProjectionMatrix();
     renderer.setSize(nw, nh);
   }
   window.addEventListener('resize', onResize);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', onResize);
+  }
 
   function pick(ev) {
     var rect = renderer.domElement.getBoundingClientRect();
@@ -317,7 +335,10 @@ function buildZoneMarker(z) {
 }
 
 window.__hyperMapSetZones = function (payload) {
-  if (!scene) return;
+  if (!scene) {
+    window.__pendingZones = payload;
+    return;
+  }
   var zones = payload.zones || [];
   var selectedId = payload.selectedId || null;
   clearZoneMeshes();
@@ -334,6 +355,7 @@ window.__hyperMapSetZones = function (payload) {
 
 window.__hyperMapInit = function () {
   if (typeof THREE === 'undefined') return;
+  if (scene) return;
   buildBaseScene();
   if (window.__pendingZones) {
     window.__hyperMapSetZones(window.__pendingZones);

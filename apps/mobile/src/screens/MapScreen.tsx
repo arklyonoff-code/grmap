@@ -42,6 +42,7 @@ export function MapScreen() {
 
   return (
     <View style={styles.container}>
+      <View style={styles.mapLayer} collapsable={false}>
       <HyperMap3D
         zones={zonesWithStatus}
         selectedZoneId={selectedZone?.id ?? null}
@@ -52,6 +53,7 @@ export function MapScreen() {
           setSelectedZone(zone);
         }}
       />
+      </View>
 
       <SafeAreaView style={styles.overlay} pointerEvents="box-none" edges={['top', 'left', 'right']}>
         <View style={styles.overlayColumn}>
@@ -83,7 +85,11 @@ export function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg.base },
-  overlay: { ...StyleSheet.absoluteFillObject },
+  mapLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  overlay: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
   overlayColumn: { flex: 1, justifyContent: 'space-between' },
   topBar: {
     alignSelf: 'flex-start',
