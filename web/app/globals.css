@@ -126,6 +126,46 @@ body {
   z-index: 3;
 }
 
+.weather-warning-banner {
+  width: 100%;
+  margin: 8px 0 0;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+}
+
+.weather-warning-banner--rain {
+  background: #ef9f27;
+}
+
+.weather-warning-banner--snow {
+  background: #1d4ed8;
+}
+
+.weather-warning-banner__icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.weather-warning-banner__body {
+  flex: 1;
+}
+
+.weather-warning-banner__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.weather-warning-banner__sub {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
 .best-zone-banner {
   width: 100%;
   max-width: 100%;

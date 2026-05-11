@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BestZoneBanner } from '../components/BestZoneBanner';
+import { WeatherWarningBanner } from '../components/WeatherWarningBanner';
 import { HyperMap3D } from '../components/HyperMap3D';
 import { PointDetailSheet } from '../components/PointDetailSheet';
 import { Colors } from '../constants/colors';
@@ -10,6 +11,7 @@ import { useAppStore } from '../stores/useAppStore';
 import { trackEvent } from '../services/analytics';
 import { ZoneWithStatus } from '@grmap/shared/types';
 import { getCongestionLevel } from '@grmap/shared/utils/report';
+import { getCurrentWeather, type WeatherInfo } from '../services/weather';
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -18,6 +20,26 @@ export function MapScreen() {
   const selectedZone = useAppStore((state) => state.selectedZone);
   const setSelectedZone = useAppStore((state) => state.setSelectedZone);
   const openWaitModal = useAppStore((state) => state.openWaitModal);
+  const [weather, setWeather] = useState<WeatherInfo>({
+    status: 'unknown',
+    description: '',
+    isDangerous: false,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      void getCurrentWeather().then((next) => {
+        if (!cancelled) setWeather(next);
+      });
+    };
+    refresh();
+    const interval = setInterval(refresh, 15 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const zonesWithStatus = useMemo<ZoneWithStatus[]>(
     () => {
@@ -61,6 +83,7 @@ export function MapScreen() {
             <View style={[styles.topBar, { marginTop: insets.top + 12 }]}>
               <Text style={styles.logoText}>GRmap</Text>
             </View>
+            <WeatherWarningBanner weather={weather} />
             <BestZoneBanner
               zones={zonesWithStatus}
               onPress={(zone) => {

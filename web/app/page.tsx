@@ -1,12 +1,14 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MOCK_ZONES } from "@grmap/shared/constants/mock-zones";
 import type { WaitLevel, WaitReport, ZoneWithStatus } from "@grmap/shared/types";
 import { getCongestionLevel } from "@grmap/shared/utils/report";
 import { MOCK_FEED } from "@/constants/mock-data";
 import { BestZoneBanner } from "@/components/Map/BestZoneBanner";
+import { WeatherWarningBanner } from "@/components/Map/WeatherWarningBanner";
+import { getCurrentWeather, type WeatherInfo } from "@/services/weather";
 
 const HyperMap3D = dynamic(
   () => import("@/components/Map/HyperMap3D").then((m) => m.HyperMap3D),
@@ -30,6 +32,26 @@ function toWaitReport(item: (typeof MOCK_FEED)[number]): WaitReport {
 
 export default function Home() {
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [weather, setWeather] = useState<WeatherInfo>({
+    status: "unknown",
+    description: "",
+    isDangerous: false,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      void getCurrentWeather().then((next) => {
+        if (!cancelled) setWeather(next);
+      });
+    };
+    refresh();
+    const interval = setInterval(refresh, 15 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   const zonesWithStatus = useMemo<ZoneWithStatus[]>(() => {
     const reportMap = new Map<string, WaitReport>();
@@ -63,6 +85,7 @@ export default function Home() {
 
         <div className="top-overlay">
           <div className="top-pill">GRmap</div>
+          <WeatherWarningBanner weather={weather} />
           <BestZoneBanner zones={zonesWithStatus} onPress={(zone) => setSelectedZoneId(zone.id)} />
         </div>
 
