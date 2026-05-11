@@ -12,7 +12,7 @@ type Props = {
 };
 
 function buildHyperMapDocument(): string {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/><style>html,body{margin:0;padding:0;width:100%;height:100%;min-height:100%;min-width:100%;touch-action:manipulation;overflow:hidden;background:#252830;position:fixed;inset:0;}canvas{display:block;width:100%!important;height:100%!important;}</style></head><body><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script>${HYPER_MAP_SCENE_SCRIPT}
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/><style>html,body{margin:0;padding:0;width:100%;height:100%;min-height:100%;min-width:100%;touch-action:manipulation;overflow:hidden;background:#e8e6e1;position:fixed;inset:0;}canvas{display:block;width:100%!important;height:100%!important;}</style></head><body><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script>${HYPER_MAP_SCENE_SCRIPT}
 (function(){
   if (typeof THREE === 'undefined') return;
   var tries = 0;
@@ -110,9 +110,9 @@ export function HyperMap3D({ zones, selectedZoneId, onZoneTap }: Props) {
 const styles = StyleSheet.create({
   wrap: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#252830',
+    backgroundColor: '#e8e6e1',
     zIndex: 0,
   },
-  webContainer: { flex: 1, width: '100%', height: '100%', backgroundColor: '#252830' },
-  web: { flex: 1, width: '100%', height: '100%', backgroundColor: '#252830', opacity: 0.999 },
+  webContainer: { flex: 1, width: '100%', height: '100%', backgroundColor: '#e8e6e1' },
+  web: { flex: 1, width: '100%', height: '100%', backgroundColor: '#e8e6e1', opacity: 0.999 },
 });

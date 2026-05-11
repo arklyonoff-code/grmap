@@ -3,7 +3,6 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect } from 'react';
-import mobileAds from 'react-native-google-mobile-ads';
 import { Feather } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +16,7 @@ import { MissionScreen } from './src/screens/MissionScreen';
 import { fetchZones, subscribeActiveReports } from './src/services/firebase';
 import { useAppStore } from './src/stores/useAppStore';
 import { trackEvent } from './src/services/analytics';
+import { hasGoogleMobileAdsNativeModule } from './src/utils/nativeCapabilities';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -81,8 +81,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    mobileAds()
-      .initialize()
+    if (!hasGoogleMobileAdsNativeModule()) return;
+    void import('react-native-google-mobile-ads')
+      .then((mod) => mod.default().initialize())
       .catch(() => undefined);
   }, []);
 

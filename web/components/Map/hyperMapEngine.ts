@@ -4,37 +4,97 @@ import type { ZoneHyperSlot } from '@grmap/shared/utils/hyperMap';
 
 type Congestion = ZoneWithStatus['congestionLevel'];
 
-function emissiveForCongestion(c: Congestion): number {
-  if (c === 'green') return 0x1d9e75;
-  if (c === 'yellow') return 0xef9f27;
-  if (c === 'red') return 0xe24b4a;
-  return 0x6b7280;
+const PALETTE = {
+  sky: 0xe8e6e1,
+  board: 0xd9d5cc,
+  boardDark: 0xc8c4bb,
+  line: 0xb8b4ac,
+  ink: 0x4a4a48,
+  inkMuted: 0x7a7874,
+};
+
+function accentForCongestion(c: Congestion): number {
+  if (c === 'green') return 0x7a9a8c;
+  if (c === 'yellow') return 0xa89a72;
+  if (c === 'red') return 0xa07a78;
+  return 0x9a9894;
 }
 
-function pillarColor(type: ZoneWithStatus['type']): number {
-  if (type === 'vegetable') return 0x22c55e;
-  if (type === 'fruit') return 0xf97316;
-  if (type === 'fish') return 0x3b82f6;
-  if (type === 'dry') return 0xa78bfa;
-  return 0x64748b;
+function boardMaterial(color: number, opacity = 1) {
+  return new THREE.MeshBasicMaterial({
+    color,
+    transparent: opacity < 1,
+    opacity,
+    side: THREE.DoubleSide,
+  });
 }
 
-function makeSignCanvas(text: string, bg: string, fg: string): THREE.CanvasTexture {
+function addBoard(
+  scene: THREE.Scene,
+  w: number,
+  h: number,
+  x: number,
+  y: number,
+  z: number,
+  rx: number,
+  ry: number,
+  rz: number,
+  color: number,
+  opacity = 1
+) {
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), boardMaterial(color, opacity));
+  mesh.position.set(x, y, z);
+  mesh.rotation.set(rx, ry, rz);
+  scene.add(mesh);
+  return mesh;
+}
+
+function makeGridTexture(): THREE.CanvasTexture {
+  const size = 512;
   const c = document.createElement('canvas');
-  c.width = 512;
+  c.width = size;
+  c.height = size;
+  const ctx = c.getContext('2d');
+  if (!ctx) return new THREE.CanvasTexture(c);
+  ctx.fillStyle = '#e8e6e1';
+  ctx.fillRect(0, 0, size, size);
+  ctx.strokeStyle = '#c8c4bb';
+  ctx.lineWidth = 1;
+  const step = 32;
+  for (let i = 0; i <= size; i += step) {
+    ctx.beginPath();
+    ctx.moveTo(i, 0);
+    ctx.lineTo(i, size);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, i);
+    ctx.lineTo(size, i);
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(10, 28);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function makeLabelTexture(text: string, accent: number): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 256;
   c.height = 128;
   const ctx = c.getContext('2d');
   if (!ctx) return new THREE.CanvasTexture(c);
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, 512, 128);
-  ctx.strokeStyle = '#000';
+  ctx.fillStyle = '#e4e1da';
+  ctx.fillRect(0, 0, 256, 128);
+  ctx.strokeStyle = `#${accent.toString(16).padStart(6, '0')}`;
   ctx.lineWidth = 4;
-  ctx.strokeRect(2, 2, 508, 124);
-  ctx.fillStyle = fg;
-  ctx.font = 'bold 44px sans-serif';
+  ctx.strokeRect(4, 4, 248, 120);
+  ctx.fillStyle = '#4a4a48';
+  ctx.font = 'bold 40px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(text, 256, 64);
+  ctx.fillText(text, 128, 64);
   const tex = new THREE.CanvasTexture(c);
   tex.needsUpdate = true;
   return tex;
@@ -51,15 +111,14 @@ export function createHyperMapEngine(
   onZoneTap: (zoneId: string) => void
 ): HyperMapEngine {
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x252830);
-  scene.fog = new THREE.Fog(0x252830, 12, 52);
+  scene.background = new THREE.Color(PALETTE.sky);
+  scene.fog = new THREE.Fog(PALETTE.sky, 18, 58);
 
-  const clock = new THREE.Clock();
   const zoneMeshes: Record<string, THREE.Group> = {};
 
-  const camera = new THREE.PerspectiveCamera(52, 1, 0.1, 120);
-  camera.position.set(0, 2.35, 12.5);
-  camera.lookAt(0, 1.15, -10);
+  const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 120);
+  camera.position.set(0, 7.5, 14);
+  camera.lookAt(0, 0, -8);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -72,200 +131,79 @@ export function createHyperMapEngine(
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
 
-  scene.add(new THREE.AmbientLight(0xb8c0d0, 0.45));
-  const sun = new THREE.DirectionalLight(0xffffff, 0.55);
-  sun.position.set(4, 14, 10);
+  scene.add(new THREE.AmbientLight(0xffffff, 0.92));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.28);
+  sun.position.set(2, 10, 8);
   scene.add(sun);
-  const fill = new THREE.PointLight(0x9ae6ff, 0.25, 40);
-  fill.position.set(-3, 3, 2);
-  scene.add(fill);
 
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(9, 56),
-    new THREE.MeshStandardMaterial({ color: 0x4b5563, roughness: 0.92, metalness: 0.05 })
+    new THREE.PlaneGeometry(11, 56),
+    new THREE.MeshBasicMaterial({ map: makeGridTexture(), side: THREE.DoubleSide })
   );
   floor.rotation.x = -Math.PI / 2;
   floor.position.set(0, 0, -10);
   scene.add(floor);
 
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0x3d4451, roughness: 0.88 });
-  const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5.5, 56), wallMat);
-  leftWall.position.set(-4.2, 2.75, -10);
-  scene.add(leftWall);
-  const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5.5, 56), wallMat);
-  rightWall.position.set(4.2, 2.75, -10);
-  scene.add(rightWall);
+  addBoard(scene, 0.06, 5.5, -4.2, 2.75, -10, 0, Math.PI / 2, 0, PALETTE.boardDark);
+  addBoard(scene, 0.06, 5.5, 4.2, 2.75, -10, 0, -Math.PI / 2, 0, PALETTE.boardDark);
+  addBoard(scene, 9, 0.06, 0, 5.6, -10, Math.PI / 2, 0, 0, PALETTE.board);
+  addBoard(scene, 5.5, 0.55, 0, 3.2, -2.2, 0, 0, 0, PALETTE.boardDark);
+  addBoard(scene, 3.2, 0.45, 0, 2.6, -2.2, 0, 0, 0, PALETTE.board);
 
-  const ceil = new THREE.Mesh(
-    new THREE.PlaneGeometry(9, 56),
-    new THREE.MeshStandardMaterial({ color: 0x1e232b, roughness: 0.95 })
-  );
-  ceil.rotation.x = Math.PI / 2;
-  ceil.position.set(0, 5.6, -10);
-  scene.add(ceil);
-
-  for (let li = 0; li < 14; li++) {
-    const tube = new THREE.Mesh(
-      new THREE.BoxGeometry(5.5, 0.08, 0.35),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffee, emissiveIntensity: 0.35 })
-    );
-    tube.position.set(0, 5.35, 4 - li * 2.8);
-    scene.add(tube);
-  }
-
-  const gate = new THREE.Group();
-  for (let i = 0; i < 18; i++) {
-    const mat = new THREE.MeshStandardMaterial({
-      color: i % 2 === 0 ? 0xfacc15 : 0x111111,
-      roughness: 0.6,
-      metalness: 0.1,
-    });
-    const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 3.8), mat);
-    mesh.position.set(-2 + i * 0.22 * 1.02, 3.1, -2.2);
-    gate.add(mesh);
-  }
-  scene.add(gate);
-
-  const banner = new THREE.Mesh(
-    new THREE.PlaneGeometry(5.5, 1.1),
-    new THREE.MeshBasicMaterial({
-      map: makeSignCanvas('사고다발구역', '#facc15', '#111111'),
-      transparent: true,
-    })
-  );
-  banner.position.set(0, 4.25, -1.5);
-  scene.add(banner);
-
-  const hSign = new THREE.Mesh(
-    new THREE.PlaneGeometry(3.2, 0.75),
-    new THREE.MeshBasicMaterial({
-      map: makeSignCanvas('제한높이 3.2M', '#ffffff', '#b91c1c'),
-      transparent: true,
-    })
-  );
-  hSign.position.set(0, 3.55, -2.25);
-  scene.add(hSign);
-
-  const addForklift = (x: number, z: number, rot = 0) => {
-    const g = new THREE.Group();
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(1.1, 0.85, 1.6),
-      new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.45, metalness: 0.35 })
-    );
-    body.position.y = 0.55;
-    g.add(body);
-    const cab = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 0.7, 0.85),
-      new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.5 })
-    );
-    cab.position.set(0, 1.05, -0.35);
-    g.add(cab);
-    const mast = new THREE.Mesh(
-      new THREE.BoxGeometry(0.12, 1.8, 0.12),
-      new THREE.MeshStandardMaterial({ color: 0x374151, metalness: 0.6, roughness: 0.3 })
-    );
-    mast.position.set(0, 1.1, 0.55);
-    g.add(mast);
-    g.position.set(x, 0, z);
-    g.rotation.y = rot;
-    scene.add(g);
-  };
-
-  addForklift(-0.8, 1.2, 0.15);
-  addForklift(0.9, -7, -0.2);
-  addForklift(-0.6, -16, 0.1);
-
-  const palletCols = [0x92400e, 0x166534, 0xca8a04];
-  for (let pi = 0; pi < 16; pi++) {
-    const g = new THREE.Group();
-    for (let i = 0; i < 4; i++) {
-      const mesh = new THREE.Mesh(
-        new THREE.BoxGeometry(0.85 + (pi % 3) * 0.05, 0.35, 0.7),
-        new THREE.MeshStandardMaterial({ color: palletCols[i % 3], roughness: 0.85 })
-      );
-      mesh.position.set(0, 0.2 + i * 0.36, 0);
-      g.add(mesh);
-    }
-    const side = pi % 2 === 0 ? -3.15 : 3.15;
-    g.position.set(side, 0, 5 - pi * 2.4);
-    scene.add(g);
-  }
-
-  const colGeo = new THREE.CylinderGeometry(0.28, 0.32, 4.2, 10);
-  for (let ci = 0; ci < 10; ci++) {
-    const hue = ci % 3 === 0 ? 0x22c55e : ci % 3 === 1 ? 0x38bdf8 : 0x4ade80;
-    const col = new THREE.Mesh(colGeo, new THREE.MeshStandardMaterial({ color: hue, roughness: 0.55 }));
-    col.position.set(ci % 2 === 0 ? -3.5 : 3.5, 2.1, 3 - ci * 2.6);
-    scene.add(col);
+  for (let i = 0; i < 12; i++) {
+    const z = 4 - i * 2.5;
+    addBoard(scene, 0.9, 0.04, -3.2, 0.12, z, -Math.PI / 2, 0, 0, PALETTE.board, 0.85);
+    addBoard(scene, 0.9, 0.04, 3.2, 0.12, z, -Math.PI / 2, 0, 0, PALETTE.board, 0.85);
   }
 
   const buildZoneMarker = (z: ZoneHyperSlot) => {
     const g = new THREE.Group();
     g.userData.zoneId = z.id;
-    g.userData.phase = Math.random() * 6.28;
+    const accent = accentForCongestion(z.congestionLevel);
 
-    const pillar = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.42, 0.48, 2.8, 16),
-      new THREE.MeshStandardMaterial({
-        color: pillarColor(z.type),
-        roughness: 0.45,
-        metalness: 0.2,
-        emissive: emissiveForCongestion(z.congestionLevel),
-        emissiveIntensity: 0.55,
-      })
+    const footprint = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.35, 1.35),
+      boardMaterial(accent, 0.22)
     );
-    pillar.position.y = 1.45;
-    g.add(pillar);
+    footprint.rotation.x = -Math.PI / 2;
+    footprint.position.y = 0.03;
+    g.add(footprint);
 
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.72, 0.06, 10, 32),
-      new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0xffffff,
-        emissiveIntensity: 0.15,
-        transparent: true,
-        opacity: 0.85,
-      })
+    const frame = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.45, 1.45),
+      boardMaterial(PALETTE.line, 0.35)
     );
-    ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.05;
-    ring.visible = false;
-    g.add(ring);
-    g.userData.ring = ring;
+    frame.rotation.x = -Math.PI / 2;
+    frame.position.y = 0.02;
+    g.add(frame);
 
-    const c = document.createElement('canvas');
-    c.width = 256;
-    c.height = 128;
-    const ctx = c.getContext('2d');
-    if (ctx) {
-      ctx.fillStyle = 'rgba(0,0,0,0.75)';
-      ctx.fillRect(0, 0, 256, 128);
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 52px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(z.shortName || z.name, 128, 64);
-    }
-    const sprite = new THREE.Sprite(
-      new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true })
-    );
-    sprite.position.set(0, 3.1, 0);
-    sprite.scale.set(2.2, 1.1, 1);
-    g.add(sprite);
-
-    const pulse = new THREE.Mesh(
-      new THREE.RingGeometry(0.55, 0.95, 32),
+    const label = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.5, 0.72),
       new THREE.MeshBasicMaterial({
-        color: emissiveForCongestion(z.congestionLevel),
+        map: makeLabelTexture(z.shortName || z.name, accent),
         transparent: true,
-        opacity: 0.35,
         side: THREE.DoubleSide,
       })
     );
-    pulse.rotation.x = -Math.PI / 2;
-    pulse.position.y = 0.02;
-    g.add(pulse);
-    g.userData.pulse = pulse;
+    label.position.set(0, 0.78, 0);
+    g.add(label);
+
+    const pin = new THREE.Mesh(
+      new THREE.PlaneGeometry(0.08, 0.78),
+      boardMaterial(PALETTE.line, 0.5)
+    );
+    pin.position.set(0, 0.39, 0);
+    g.add(pin);
+
+    const ring = new THREE.Mesh(
+      new THREE.PlaneGeometry(1.65, 1.65),
+      boardMaterial(PALETTE.ink, 0.45)
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.04;
+    ring.visible = false;
+    g.add(ring);
+    g.userData.ring = ring;
 
     g.position.set(z.mapX, 0, z.mapZ);
     return g;
@@ -281,11 +219,11 @@ export function createHyperMapEngine(
   const setZones = (zones: ZoneHyperSlot[], selectedId: string | null) => {
     clearZoneMeshes();
     zones.forEach((z) => {
-      const g = buildZoneMarker(z);
-      zoneMeshes[z.id] = g;
-      scene.add(g);
-      if (selectedId === z.id && g.userData.ring instanceof THREE.Mesh) {
-        g.userData.ring.visible = true;
+      const marker = buildZoneMarker(z);
+      zoneMeshes[z.id] = marker;
+      scene.add(marker);
+      if (selectedId === z.id && marker.userData.ring instanceof THREE.Mesh) {
+        marker.userData.ring.visible = true;
       }
     });
   };
@@ -331,13 +269,6 @@ export function createHyperMapEngine(
   let animId = 0;
   const tick = () => {
     animId = requestAnimationFrame(tick);
-    const t = clock.getElapsedTime();
-    Object.values(zoneMeshes).forEach((grp) => {
-      const pulse = grp.userData.pulse as THREE.Mesh | undefined;
-      if (!pulse) return;
-      const s = 1 + 0.04 * Math.sin(t * 3 + (grp.userData.phase as number));
-      pulse.scale.set(s, s, 1);
-    });
     renderer.render(scene, camera);
   };
   tick();
