@@ -1,22 +1,15 @@
 import React, { useMemo } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BestZoneBanner } from '../components/BestZoneBanner';
+import { HyperMap3D } from '../components/HyperMap3D';
 import { PointDetailSheet } from '../components/PointDetailSheet';
-import { ZoneMarker } from '../components/ZoneMarker';
 import { Colors } from '../constants/colors';
 import { Radius, Spacing } from '../constants/typography';
-import { GARAK_CENTER } from '../constants/zones';
 import { useAppStore } from '../stores/useAppStore';
 import { trackEvent } from '../services/analytics';
 import { ZoneWithStatus } from '@grmap/shared/types';
 import { getCongestionLevel } from '@grmap/shared/utils/report';
-
-const GRAYSCALE_MAP_STYLE = [
-  { featureType: 'all', elementType: 'geometry', stylers: [{ saturation: -60 }] },
-  { featureType: 'poi', elementType: 'all', stylers: [{ visibility: 'off' }] },
-  { featureType: 'transit', elementType: 'all', stylers: [{ visibility: 'off' }] },
-];
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
@@ -49,39 +42,37 @@ export function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <MapView
-        style={styles.map}
-        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
-        customMapStyle={GRAYSCALE_MAP_STYLE}
-        initialRegion={{
-          latitude: GARAK_CENTER.lat,
-          longitude: GARAK_CENTER.lng,
-          latitudeDelta: 0.008,
-          longitudeDelta: 0.008,
+      <HyperMap3D
+        zones={zonesWithStatus}
+        selectedZoneId={selectedZone?.id ?? null}
+        onZoneTap={(zoneId) => {
+          const zone = zonesWithStatus.find((z) => z.id === zoneId);
+          if (!zone) return;
+          void trackEvent('zone_marker_tap', { zone_id: zoneId, source: 'hyper_map_3d' });
+          setSelectedZone(zone);
         }}
-      >
-        {zonesWithStatus.map((zone) => (
-          <ZoneMarker
-            key={zone.id}
-            zone={zone}
-            isSelected={selectedZone?.id === zone.id}
-            onPress={() => {
-              void trackEvent('zone_marker_tap', { zone_id: zone.id });
-              setSelectedZone(zone);
-            }}
-          />
-        ))}
-      </MapView>
+      />
 
-      <SafeAreaView style={styles.overlay} pointerEvents="box-none">
-        <View style={[styles.topBar, { marginTop: insets.top + 12 }]}>
-          <Text style={styles.logoText}>GRmap</Text>
-        </View>
-
-        <View style={styles.bottomArea}>
-          <Pressable style={styles.bottomButton} onPress={() => openWaitModal()}>
-            <Text style={styles.bottomButtonText}>대기시간 공유하기</Text>
-          </Pressable>
+      <SafeAreaView style={styles.overlay} pointerEvents="box-none" edges={['top', 'left', 'right']}>
+        <View style={styles.overlayColumn}>
+          <View>
+            <View style={[styles.topBar, { marginTop: insets.top + 12 }]}>
+              <Text style={styles.logoText}>GRmap</Text>
+            </View>
+            <BestZoneBanner
+              zones={zonesWithStatus}
+              onPress={(zone) => {
+                void trackEvent('zone_marker_tap', { zone_id: zone.id, source: 'best_banner' });
+                setSelectedZone(zone);
+              }}
+            />
+          </View>
+          <View style={{ flex: 1 }} />
+          <View style={[styles.bottomArea, { paddingBottom: insets.bottom + 8 }]}>
+            <Pressable style={styles.bottomButton} onPress={() => openWaitModal()}>
+              <Text style={styles.bottomButtonText}>대기시간 공유하기</Text>
+            </Pressable>
+          </View>
         </View>
       </SafeAreaView>
 
@@ -92,8 +83,8 @@ export function MapScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bg.base },
-  map: { flex: 1 },
-  overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between' },
+  overlay: { ...StyleSheet.absoluteFillObject },
+  overlayColumn: { flex: 1, justifyContent: 'space-between' },
   topBar: {
     alignSelf: 'flex-start',
     marginLeft: Spacing.md,
@@ -103,10 +94,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.65)',
   },
   logoText: { color: Colors.text.inverse, fontSize: 15, fontWeight: '700' },
-  bottomArea: { paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm },
+  bottomArea: { paddingHorizontal: Spacing.md },
   bottomButton: {
-    height: 56,
-    borderRadius: Radius.lg,
+    height: 72,
+    borderRadius: 20,
     backgroundColor: Colors.action.primary,
     justifyContent: 'center',
     alignItems: 'center',

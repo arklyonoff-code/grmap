@@ -17,6 +17,13 @@ function getStatusColor(level: ZoneWithStatus['congestionLevel']) {
   return Colors.congestion.unknown;
 }
 
+function waitLine(waitLevel: NonNullable<ZoneWithStatus['latestReport']>['waitLevel']) {
+  if (waitLevel === 'none') return '바로';
+  if (waitLevel === 'under10') return '10분↓';
+  if (waitLevel === 'under30') return '30분↓';
+  return '1시간↑';
+}
+
 export function ZoneMarker({ zone, isSelected, onPress }: Props) {
   return (
     <Marker
@@ -29,11 +36,14 @@ export function ZoneMarker({ zone, isSelected, onPress }: Props) {
           styles.marker,
           {
             backgroundColor: getStatusColor(zone.congestionLevel),
-            borderWidth: isSelected ? 3 : 0,
+            borderWidth: isSelected ? 4 : 0,
           },
         ]}
       >
         <Text style={styles.label}>{zone.shortName}</Text>
+        {zone.latestReport ? (
+          <Text style={styles.waitHint}>{waitLine(zone.latestReport.waitLevel)}</Text>
+        ) : null}
       </View>
     </Marker>
   );
@@ -41,16 +51,22 @@ export function ZoneMarker({ zone, isSelected, onPress }: Props) {
 
 const styles = StyleSheet.create({
   marker: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    borderColor: Colors.text.inverse,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    borderColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   label: {
     color: Colors.text.inverse,
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
+  },
+  waitHint: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 10,
+    marginTop: 1,
+    fontWeight: '500',
   },
 });
