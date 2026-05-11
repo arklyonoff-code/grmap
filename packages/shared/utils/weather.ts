@@ -2,6 +2,19 @@ export const GARAK_WEATHER_COORD = { lat: 37.4929, lng: 127.119 };
 
 const FETCH_TIMEOUT_MS = 5000;
 
+const WEATHER_API_KEY_PLACEHOLDERS = new Set([
+  '',
+  'openweathermap_api_key_here',
+  '여기에_OpenWeatherMap_키_입력',
+]);
+
+export function normalizeWeatherApiKey(value?: string | null): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  if (WEATHER_API_KEY_PLACEHOLDERS.has(trimmed)) return undefined;
+  return trimmed;
+}
+
 export type WeatherStatus = 'clear' | 'rain' | 'snow' | 'unknown';
 
 export interface WeatherInfo {

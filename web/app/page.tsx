@@ -7,6 +7,7 @@ import type { WaitLevel, WaitReport, ZoneWithStatus } from "@grmap/shared/types"
 import { getCongestionLevel } from "@grmap/shared/utils/report";
 import { MOCK_FEED } from "@/constants/mock-data";
 import { BestZoneBanner } from "@/components/Map/BestZoneBanner";
+import { ZoneDetailSheet } from "@/components/Map/ZoneDetailSheet";
 import { WeatherWarningBanner } from "@/components/Map/WeatherWarningBanner";
 import { getCurrentWeather, type WeatherInfo } from "@/services/weather";
 
@@ -90,16 +91,7 @@ export default function Home() {
         </div>
 
         {selectedZone ? (
-          <div className="zone-sheet" role="dialog" aria-label={`${selectedZone.name} 상세`}>
-            <div className="zone-sheet__header">
-              <h2>{selectedZone.name}</h2>
-              <button type="button" className="zone-sheet__close" onClick={() => setSelectedZoneId(null)}>
-                닫기
-              </button>
-            </div>
-            <p className="zone-sheet__desc">{selectedZone.dockDescription}</p>
-            {selectedZone.entryNote ? <p className="zone-sheet__note">{selectedZone.entryNote}</p> : null}
-          </div>
+          <ZoneDetailSheet zone={selectedZone} onClose={() => setSelectedZoneId(null)} />
         ) : null}
 
         <div className="bottom-overlay">

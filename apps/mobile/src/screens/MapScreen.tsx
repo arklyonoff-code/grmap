@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BestZoneBanner } from '../components/BestZoneBanner';
 import { WeatherWarningBanner } from '../components/WeatherWarningBanner';
@@ -27,19 +28,23 @@ export function MapScreen() {
   });
 
   useEffect(() => {
-    let cancelled = false;
-    const refresh = () => {
+    const interval = setInterval(() => {
+      void getCurrentWeather().then(setWeather);
+    }, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      let cancelled = false;
       void getCurrentWeather().then((next) => {
         if (!cancelled) setWeather(next);
       });
-    };
-    refresh();
-    const interval = setInterval(refresh, 15 * 60 * 1000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   const zonesWithStatus = useMemo<ZoneWithStatus[]>(
     () => {

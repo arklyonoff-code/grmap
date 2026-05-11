@@ -1,5 +1,6 @@
 import {
   fetchGarakCurrentWeather,
+  normalizeWeatherApiKey,
   type WeatherInfo,
   type WeatherStatus,
 } from '@grmap/shared/utils/weather';
@@ -7,5 +8,5 @@ import {
 export type { WeatherInfo, WeatherStatus };
 
 export function getCurrentWeather(): Promise<WeatherInfo> {
-  return fetchGarakCurrentWeather(process.env.NEXT_PUBLIC_WEATHER_API_KEY);
+  return fetchGarakCurrentWeather(normalizeWeatherApiKey(process.env.NEXT_PUBLIC_WEATHER_API_KEY));
 }

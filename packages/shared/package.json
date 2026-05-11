@@ -8,6 +8,7 @@
     "./utils/report": "./utils/report.ts",
     "./utils/hyperMap": "./utils/hyperMap.ts",
     "./utils/weather": "./utils/weather.ts",
+    "./utils/share": "./utils/share.ts",
     "./utils/nickname": "./utils/nickname.ts",
     "./constants/mock-zones": "./constants/mock-zones.ts",
     "./constants/board": "./constants/board.ts",

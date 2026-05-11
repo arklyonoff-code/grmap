@@ -1,6 +1,6 @@
 import BottomSheet from '@gorhom/bottom-sheet';
 import React, { useMemo } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { buildKakaoNaviDeeplink } from '../constants/mockZones';
 import { Colors } from '../constants/colors';
@@ -8,6 +8,7 @@ import { Radius, Spacing, Typography } from '../constants/typography';
 import { useAppStore } from '../stores/useAppStore';
 import { ZoneWithStatus } from '@grmap/shared/types';
 import { getElapsedMinutes, getElapsedText, getWaitLevelLabel } from '@grmap/shared/utils/report';
+import { buildZoneShareMessage } from '@grmap/shared/utils/share';
 
 interface Props {
   zone: ZoneWithStatus;
@@ -40,6 +41,18 @@ export function PointDetailSheet({ zone, onClose }: Props) {
         ? Colors.status.congested
         : Colors.status.clear
     : Colors.text.tertiary;
+
+  const handleShare = async () => {
+    const message = buildZoneShareMessage(zone);
+    try {
+      await Share.share({
+        message,
+        title: `가락맵 — ${zone.name} 현황`,
+      });
+    } catch {
+      // 사용자 취소 등
+    }
+  };
 
   return (
     <BottomSheet
@@ -85,6 +98,10 @@ export function PointDetailSheet({ zone, onClose }: Props) {
         </View>
 
         <View style={styles.buttonRow}>
+          <Pressable style={styles.shareButton} onPress={handleShare}>
+            <Text style={styles.shareIcon}>📤</Text>
+            <Text style={styles.shareLabel}>지금 상황 카톡으로 공유</Text>
+          </Pressable>
           <Pressable
             style={styles.primaryButton}
             onPress={async () => {
@@ -139,6 +156,19 @@ const styles = StyleSheet.create({
   description: { color: Colors.text.primary, ...Typography.body, flex: 1 },
   subDescription: { color: Colors.text.secondary, ...Typography.caption, flex: 1 },
   buttonRow: { marginTop: 'auto', gap: 8, paddingHorizontal: 20 },
+  shareButton: {
+    minHeight: 52,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  shareIcon: { fontSize: 16 },
+  shareLabel: { fontSize: 15, fontWeight: '600', color: '#111' },
   primaryButton: {
     minHeight: 52,
     borderRadius: Radius.md,
