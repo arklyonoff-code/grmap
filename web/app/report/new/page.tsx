@@ -1,6 +1,6 @@
  "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { get, ref } from "firebase/database";
 import { MOCK_ZONES } from "@grmap/shared/constants/mock-zones";
@@ -23,6 +23,14 @@ const VEHICLE_OPTIONS: Array<{ label: string; value: VehicleSize | null }> = [
 ];
 
 export default function ReportPage() {
+  return (
+    <Suspense fallback={<main className="page-wrap">불러오는 중...</main>}>
+      <ReportPageContent />
+    </Suspense>
+  );
+}
+
+function ReportPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialZoneId = searchParams?.get("zoneId") ?? MOCK_ZONES[0]?.id ?? "";
