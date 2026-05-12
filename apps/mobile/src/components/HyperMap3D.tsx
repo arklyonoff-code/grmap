@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import WebView from 'react-native-webview';
+import type { DangerZone } from '@grmap/shared/constants/dangerZones';
 import type { ZoneWithStatus } from '@grmap/shared/types';
+import { projectLatLngToHyperMap } from '@grmap/shared/utils/hyperMap';
 import { assignHyperMapSlots } from './hyperMap3d/layout';
 import { HYPER_MAP_SCENE_SCRIPT } from './hyperMap3d/sceneScript';
 
@@ -9,6 +11,8 @@ type Props = {
   zones: ZoneWithStatus[];
   selectedZoneId: string | null;
   onZoneTap: (zoneId: string) => void;
+  dangerZones?: DangerZone[];
+  isWeatherDangerous?: boolean;
 };
 
 function buildHyperMapDocument(): string {
@@ -45,7 +49,22 @@ type ZonePayload = {
   mapZ: number;
 };
 
-export function HyperMap3D({ zones, selectedZoneId, onZoneTap }: Props) {
+type DangerZonePayload = {
+  id: string;
+  name: string;
+  description: string;
+  floorLevel: number;
+  mapX: number;
+  mapZ: number;
+};
+
+export function HyperMap3D({
+  zones,
+  selectedZoneId,
+  onZoneTap,
+  dangerZones = [],
+  isWeatherDangerous = false,
+}: Props) {
   const ref = useRef<WebView>(null);
   const html = useMemo(() => buildHyperMapDocument(), []);
 
@@ -60,8 +79,20 @@ export function HyperMap3D({ zones, selectedZoneId, onZoneTap }: Props) {
       mapX: s.mapX,
       mapZ: s.mapZ,
     }));
-    return { zones: z, selectedId: selectedZoneId };
-  }, [zones, selectedZoneId]);
+    const danger: DangerZonePayload[] = dangerZones.map((dz) => {
+      const { mapX, mapZ } = projectLatLngToHyperMap(dz.lat, dz.lng);
+      return {
+        id: dz.id,
+        name: dz.name,
+        description: dz.description,
+        floorLevel:
+          dz.floorLevel ?? (dz.sign.kind === 'ramp' ? dz.sign.floorLevel : 0),
+        mapX,
+        mapZ,
+      };
+    });
+    return { zones: z, selectedId: selectedZoneId, dangerZones: danger, isWeatherDangerous };
+  }, [zones, selectedZoneId, dangerZones, isWeatherDangerous]);
 
   const pushZones = useCallback(() => {
     const js = `(function(){try{if(window.__hyperMapSetZones){window.__hyperMapSetZones(${JSON.stringify(payload)});}}catch(e){}})();true;`;

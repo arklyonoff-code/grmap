@@ -1,7 +1,7 @@
  "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { get, ref } from "firebase/database";
 import { MOCK_ZONES } from "@grmap/shared/constants/mock-zones";
 import type { VehicleSize, WaitLevel, Zone } from "@grmap/shared/types";
@@ -24,8 +24,10 @@ const VEHICLE_OPTIONS: Array<{ label: string; value: VehicleSize | null }> = [
 
 export default function ReportPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialZoneId = searchParams?.get("zoneId") ?? MOCK_ZONES[0]?.id ?? "";
   const [zones, setZones] = useState<Zone[]>(MOCK_ZONES);
-  const [zoneId, setZoneId] = useState<string>(MOCK_ZONES[0]?.id ?? "");
+  const [zoneId, setZoneId] = useState<string>(initialZoneId);
   const [waitLevel, setWaitLevel] = useState<WaitLevel | null>(null);
   const [vehicleSize, setVehicleSize] = useState<VehicleSize | null>(null);
   const [submitting, setSubmitting] = useState(false);

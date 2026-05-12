@@ -1,7 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { DANGER_ZONES } from "@grmap/shared/constants/dangerZones";
 import { MOCK_ZONES } from "@grmap/shared/constants/mock-zones";
 import type { WaitLevel, WaitReport, ZoneWithStatus } from "@grmap/shared/types";
 import { getCongestionLevel } from "@grmap/shared/utils/report";
@@ -11,8 +13,8 @@ import { ZoneDetailSheet } from "@/components/Map/ZoneDetailSheet";
 import { WeatherWarningBanner } from "@/components/Map/WeatherWarningBanner";
 import { getCurrentWeather, type WeatherInfo } from "@/services/weather";
 
-const HyperMap3D = dynamic(
-  () => import("@/components/Map/HyperMap3D").then((m) => m.HyperMap3D),
+const RealisticMap3D = dynamic(
+  () => import("@/components/Map/RealisticMap3D").then((m) => m.RealisticMap3D),
   { ssr: false }
 );
 
@@ -32,12 +34,17 @@ function toWaitReport(item: (typeof MOCK_FEED)[number]): WaitReport {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [weather, setWeather] = useState<WeatherInfo>({
     status: "unknown",
     description: "",
     isDangerous: false,
   });
+
+  const handleShareRequest = useCallback(() => {
+    router.push(selectedZoneId ? `/report/new?zoneId=${selectedZoneId}` : "/report/new");
+  }, [router, selectedZoneId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,10 +85,13 @@ export default function Home() {
   return (
     <main className="map-page">
       <section className="map-container" aria-label="가락시장 상하차 3D 맵">
-        <HyperMap3D
+        <RealisticMap3D
           zones={zonesWithStatus}
           selectedZoneId={selectedZoneId}
+          dangerZones={DANGER_ZONES}
+          isWeatherDangerous={weather.isDangerous}
           onZoneTap={setSelectedZoneId}
+          onShareRequest={handleShareRequest}
         />
 
         <div className="top-overlay">
@@ -95,7 +105,7 @@ export default function Home() {
         ) : null}
 
         <div className="bottom-overlay">
-          <button type="button" className="primary-cta">
+          <button type="button" className="primary-cta" onClick={handleShareRequest}>
             대기시간 공유하기
           </button>
         </div>

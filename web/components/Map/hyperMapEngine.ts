@@ -100,8 +100,22 @@ function makeLabelTexture(text: string, accent: number): THREE.CanvasTexture {
   return tex;
 }
 
+export type DangerHyperSlot = {
+  id: string;
+  name: string;
+  description: string;
+  floorLevel: number;
+  mapX: number;
+  mapZ: number;
+};
+
 export type HyperMapEngine = {
-  setZones: (zones: ZoneHyperSlot[], selectedId: string | null) => void;
+  setZones: (
+    zones: ZoneHyperSlot[],
+    selectedId: string | null,
+    dangerZones?: DangerHyperSlot[],
+    isWeatherDangerous?: boolean
+  ) => void;
   resize: () => void;
   dispose: () => void;
 };
@@ -115,6 +129,7 @@ export function createHyperMapEngine(
   scene.fog = new THREE.Fog(PALETTE.sky, 18, 58);
 
   const zoneMeshes: Record<string, THREE.Group> = {};
+  const dangerMeshes: Record<string, THREE.Group> = {};
 
   const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 120);
   camera.position.set(0, 7.5, 14);
@@ -155,6 +170,50 @@ export function createHyperMapEngine(
     addBoard(scene, 0.9, 0.04, -3.2, 0.12, z, -Math.PI / 2, 0, 0, PALETTE.board, 0.85);
     addBoard(scene, 0.9, 0.04, 3.2, 0.12, z, -Math.PI / 2, 0, 0, PALETTE.board, 0.85);
   }
+
+  const makeWarningTexture = (isDangerous: boolean) => {
+    const size = isDangerous ? 128 : 96;
+    const c = document.createElement('canvas');
+    c.width = size;
+    c.height = size;
+    const ctx = c.getContext('2d');
+    if (!ctx) return new THREE.CanvasTexture(c);
+    ctx.fillStyle = isDangerous ? '#E24B4A' : '#EF9F27';
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2 - 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.font = `${isDangerous ? 56 : 44}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⚠️', size / 2, size / 2 + 2);
+    const tex = new THREE.CanvasTexture(c);
+    tex.needsUpdate = true;
+    return tex;
+  };
+
+  const buildDangerMarker = (d: DangerHyperSlot, isWeatherDangerous: boolean) => {
+    const g = new THREE.Group();
+    g.userData.dangerId = d.id;
+    g.userData.weatherDanger = isWeatherDangerous;
+    g.userData.phase = Math.random() * Math.PI * 2;
+    const size = isWeatherDangerous ? 0.95 : 0.72;
+    const badge = new THREE.Mesh(
+      new THREE.PlaneGeometry(size, size),
+      new THREE.MeshBasicMaterial({
+        map: makeWarningTexture(isWeatherDangerous),
+        transparent: true,
+        side: THREE.DoubleSide,
+      })
+    );
+    badge.position.y = 0.55;
+    g.add(badge);
+    g.userData.badge = badge;
+    g.position.set(d.mapX, 0, d.mapZ);
+    return g;
+  };
 
   const buildZoneMarker = (z: ZoneHyperSlot) => {
     const g = new THREE.Group();
@@ -216,8 +275,21 @@ export function createHyperMapEngine(
     });
   };
 
-  const setZones = (zones: ZoneHyperSlot[], selectedId: string | null) => {
+  const clearDangerMeshes = () => {
+    Object.keys(dangerMeshes).forEach((id) => {
+      scene.remove(dangerMeshes[id]);
+      delete dangerMeshes[id];
+    });
+  };
+
+  const setZones = (
+    zones: ZoneHyperSlot[],
+    selectedId: string | null,
+    dangerZones: DangerHyperSlot[] = [],
+    isWeatherDangerous = false
+  ) => {
     clearZoneMeshes();
+    clearDangerMeshes();
     zones.forEach((z) => {
       const marker = buildZoneMarker(z);
       zoneMeshes[z.id] = marker;
@@ -225,6 +297,11 @@ export function createHyperMapEngine(
       if (selectedId === z.id && marker.userData.ring instanceof THREE.Mesh) {
         marker.userData.ring.visible = true;
       }
+    });
+    dangerZones.forEach((d) => {
+      const marker = buildDangerMarker(d, isWeatherDangerous);
+      dangerMeshes[d.id] = marker;
+      scene.add(marker);
     });
   };
 
@@ -267,8 +344,17 @@ export function createHyperMapEngine(
   renderer.domElement.addEventListener('touchend', onTouchEnd);
 
   let animId = 0;
-  const tick = () => {
+  const tick = (now?: number) => {
     animId = requestAnimationFrame(tick);
+    const pulseT = now ?? performance.now();
+    Object.keys(dangerMeshes).forEach((id) => {
+      const g = dangerMeshes[id];
+      if (g.userData.weatherDanger && g.userData.badge instanceof THREE.Mesh) {
+        const phase = (g.userData.phase as number) + pulseT * 0.004;
+        const scale = 1 + Math.sin(phase) * 0.1;
+        g.userData.badge.scale.set(scale, scale, 1);
+      }
+    });
     renderer.render(scene, camera);
   };
   tick();
@@ -287,6 +373,7 @@ export function createHyperMapEngine(
       window.removeEventListener('resize', resize);
       ro?.disconnect();
       clearZoneMeshes();
+      clearDangerMeshes();
       renderer.dispose();
       if (renderer.domElement.parentElement === host) {
         host.removeChild(renderer.domElement);

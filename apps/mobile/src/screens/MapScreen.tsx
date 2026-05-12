@@ -1,31 +1,66 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BestZoneBanner } from '../components/BestZoneBanner';
+import { OfflineCacheBanner } from '../components/OfflineCacheBanner';
 import { WeatherWarningBanner } from '../components/WeatherWarningBanner';
 import { HyperMap3D } from '../components/HyperMap3D';
 import { PointDetailSheet } from '../components/PointDetailSheet';
 import { Colors } from '../constants/colors';
+import { DANGER_ZONES } from '../constants/dangerZones';
 import { Radius, Spacing } from '../constants/typography';
 import { useAppStore } from '../stores/useAppStore';
 import { trackEvent } from '../services/analytics';
 import { ZoneWithStatus } from '@grmap/shared/types';
 import { getCongestionLevel } from '@grmap/shared/utils/report';
+import { loadFromCache } from '../services/cache';
 import { getCurrentWeather, type WeatherInfo } from '../services/weather';
 
 export function MapScreen() {
   const insets = useSafeAreaInsets();
   const zones = useAppStore((state) => state.zones);
   const activeReports = useAppStore((state) => state.activeReports);
+  const setZones = useAppStore((state) => state.setZones);
+  const setActiveReports = useAppStore((state) => state.setActiveReports);
   const selectedZone = useAppStore((state) => state.selectedZone);
   const setSelectedZone = useAppStore((state) => state.setSelectedZone);
   const openWaitModal = useAppStore((state) => state.openWaitModal);
+  const [isOffline, setIsOffline] = useState(false);
+  const [cacheAge, setCacheAge] = useState<number | null>(null);
   const [weather, setWeather] = useState<WeatherInfo>({
     status: 'unknown',
     description: '',
     isDangerous: false,
   });
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOffline(!(state.isConnected ?? false));
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    if (!isOffline) {
+      setCacheAge(null);
+      return;
+    }
+    const applyCache = () => {
+      void loadFromCache().then((cache) => {
+        if (!cache) return;
+        setZones(cache.zones);
+        setActiveReports(cache.reports);
+        if (cache.cachedAt) {
+          setCacheAge(Math.floor((Date.now() - cache.cachedAt) / 60_000));
+        }
+      });
+    };
+    applyCache();
+    const interval = setInterval(applyCache, 60_000);
+    return () => clearInterval(interval);
+  }, [isOffline, setActiveReports, setZones]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -73,6 +108,8 @@ export function MapScreen() {
       <HyperMap3D
         zones={zonesWithStatus}
         selectedZoneId={selectedZone?.id ?? null}
+        dangerZones={DANGER_ZONES}
+        isWeatherDangerous={weather.isDangerous}
         onZoneTap={(zoneId) => {
           const zone = zonesWithStatus.find((z) => z.id === zoneId);
           if (!zone) return;
@@ -88,6 +125,7 @@ export function MapScreen() {
             <View style={[styles.topBar, { marginTop: insets.top + 12 }]}>
               <Text style={styles.logoText}>GRmap</Text>
             </View>
+            {isOffline ? <OfflineCacheBanner cacheAgeMinutes={cacheAge} /> : null}
             <WeatherWarningBanner weather={weather} />
             <BestZoneBanner
               zones={zonesWithStatus}

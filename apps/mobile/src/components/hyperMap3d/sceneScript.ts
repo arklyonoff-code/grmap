@@ -4,6 +4,7 @@
 export const HYPER_MAP_SCENE_SCRIPT = `
 var scene, camera, renderer, raycaster, pointer, animId;
 var zoneMeshes = {};
+var dangerMeshes = {};
 
 var PALETTE = { sky: 0xe8e6e1, board: 0xd9d5cc, boardDark: 0xc8c4bb, line: 0xb8b4ac, ink: 0x4a4a48 };
 
@@ -174,8 +175,18 @@ function buildBaseScene() {
     if (e.changedTouches && e.changedTouches[0]) pick(e.changedTouches[0]);
   });
 
-  function tick() {
+  function tick(now) {
     animId = requestAnimationFrame(tick);
+    var pulseT = now !== undefined ? now : performance.now();
+    var dkeys = Object.keys(dangerMeshes);
+    for (var di = 0; di < dkeys.length; di++) {
+      var dg = dangerMeshes[dkeys[di]];
+      if (dg && dg.userData.weatherDanger && dg.userData.badge) {
+        var phase = (dg.userData.phase || 0) + pulseT * 0.004;
+        var scale = 1 + Math.sin(phase) * 0.1;
+        dg.userData.badge.scale.set(scale, scale, 1);
+      }
+    }
     renderer.render(scene, camera);
   }
   tick();
@@ -186,6 +197,56 @@ function clearZoneMeshes() {
     if (zoneMeshes[id] && scene) scene.remove(zoneMeshes[id]);
     delete zoneMeshes[id];
   });
+}
+
+function clearDangerMeshes() {
+  Object.keys(dangerMeshes).forEach(function (id) {
+    if (dangerMeshes[id] && scene) scene.remove(dangerMeshes[id]);
+    delete dangerMeshes[id];
+  });
+}
+
+function makeWarningTexture(isDangerous) {
+  var size = isDangerous ? 128 : 96;
+  var c = document.createElement('canvas');
+  c.width = size;
+  c.height = size;
+  var ctx = c.getContext('2d');
+  ctx.fillStyle = isDangerous ? '#E24B4A' : '#EF9F27';
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2 - 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.font = (isDangerous ? '56px' : '44px') + ' sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('⚠️', size / 2, size / 2 + 2);
+  var tex = new THREE.CanvasTexture(c);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function buildDangerMarker(d, isWeatherDangerous) {
+  var g = new THREE.Group();
+  g.userData.dangerId = d.id;
+  g.userData.weatherDanger = isWeatherDangerous;
+  g.userData.phase = Math.random() * Math.PI * 2;
+  var size = isWeatherDangerous ? 0.95 : 0.72;
+  var badge = new THREE.Mesh(
+    new THREE.PlaneGeometry(size, size),
+    new THREE.MeshBasicMaterial({
+      map: makeWarningTexture(isWeatherDangerous),
+      transparent: true,
+      side: THREE.DoubleSide
+    })
+  );
+  badge.position.y = 0.55;
+  g.add(badge);
+  g.userData.badge = badge;
+  g.position.set(d.mapX, 0, d.mapZ);
+  return g;
 }
 
 function buildZoneMarker(z) {
@@ -236,13 +297,22 @@ window.__hyperMapSetZones = function (payload) {
   }
   var zones = payload.zones || [];
   var selectedId = payload.selectedId || null;
+  var dangerZones = payload.dangerZones || [];
+  var isWeatherDangerous = !!payload.isWeatherDangerous;
   clearZoneMeshes();
+  clearDangerMeshes();
   for (var i = 0; i < zones.length; i++) {
     var z = zones[i];
     var marker = buildZoneMarker(z);
     zoneMeshes[z.id] = marker;
     scene.add(marker);
     if (selectedId === z.id) marker.userData.ring.visible = true;
+  }
+  for (var j = 0; j < dangerZones.length; j++) {
+    var d = dangerZones[j];
+    var dm = buildDangerMarker(d, isWeatherDangerous);
+    dangerMeshes[d.id] = dm;
+    scene.add(dm);
   }
 };
 

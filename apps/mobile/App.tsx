@@ -13,6 +13,7 @@ import { BoardDetailScreen } from './src/screens/BoardDetailScreen';
 import { BoardListScreen } from './src/screens/BoardListScreen';
 import { MapScreen } from './src/screens/MapScreen';
 import { MissionScreen } from './src/screens/MissionScreen';
+import { loadFromCache, saveToCache } from './src/services/cache';
 import { fetchZones, subscribeActiveReports } from './src/services/firebase';
 import { useAppStore } from './src/stores/useAppStore';
 import { trackEvent } from './src/services/analytics';
@@ -88,14 +89,26 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    void loadFromCache().then((cache) => {
+      if (!cache?.zones.length) return;
+      setZones(cache.zones);
+      setActiveReports(cache.reports);
+    });
+
     fetchZones()
       .then((zones) => {
-        setZones(zones.length ? zones : MOCK_ZONES);
+        const next = zones.length ? zones : MOCK_ZONES;
+        setZones(next);
+        const reports = useAppStore.getState().activeReports;
+        void saveToCache(next, reports.length ? reports : MOCK_REPORTS);
       })
       .catch(() => setZones(MOCK_ZONES));
 
     const unsubscribe = subscribeActiveReports((reports) => {
-      setActiveReports(reports.length ? reports : MOCK_REPORTS);
+      const next = reports.length ? reports : MOCK_REPORTS;
+      setActiveReports(next);
+      const zones = useAppStore.getState().zones;
+      void saveToCache(zones.length ? zones : MOCK_ZONES, next);
     });
 
     return unsubscribe;
