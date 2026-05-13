@@ -7,12 +7,24 @@
     "./types": "./types/index.ts",
     "./utils/report": "./utils/report.ts",
     "./utils/hyperMap": "./utils/hyperMap.ts",
+    "./utils/forkliftMapLayout": "./utils/forkliftMapLayout.ts",
+    "./constants/forkliftAnchors": "./constants/forkliftAnchors.ts",
     "./utils/weather": "./utils/weather.ts",
     "./utils/share": "./utils/share.ts",
     "./utils/nickname": "./utils/nickname.ts",
     "./constants/mock-zones": "./constants/mock-zones.ts",
     "./constants/board": "./constants/board.ts",
     "./constants/mission": "./constants/mission.ts",
-    "./constants/dangerZones": "./constants/dangerZones.ts"
+    "./constants/dangerZones": "./constants/dangerZones.ts",
+    "./realistic-map/realisticSceneEngine": "./realistic-map/realisticSceneEngine.ts",
+    "./realistic-map/forkliftController": "./realistic-map/forkliftController.ts",
+    "./realistic-map/webviewEntry": "./realistic-map/webviewEntry.ts",
+    "./forklift-map/webviewEntry": "./forklift-map/webviewEntry.ts"
+  },
+  "dependencies": {
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.184.1"
   }
 }

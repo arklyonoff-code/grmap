@@ -30,6 +30,12 @@ export function BottomTab() {
         </svg>
         오늘 미션
       </Link>
+      <Link href="/forklift" className={`tab-link ${pathname === "/forklift" ? "active" : ""}`}>
+        <span className="tab-link__emoji" aria-hidden>
+          🏗️
+        </span>
+        3D 맵
+      </Link>
       <Link href="/board" className={`tab-link ${isBoard ? "active" : ""}`}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
