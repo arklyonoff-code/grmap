@@ -1,0 +1,9 @@
+import { FORKLIFT_MAP_RUNTIME_SCRIPT } from './generatedSceneScript';
+
+/**
+ * Forklift 3D WebView HTML (Three.js r128 CDN + 번들 런타임).
+ * 실제 기기에서 WebGL 확인을 권장합니다. iOS 시뮬레이터/Android 에뮬레이터는 WebGL/성능이 제한될 수 있습니다.
+ */
+export function buildForkliftMapDocument(): string {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/><style>html,body{margin:0;padding:0;width:100%;height:100%;min-height:100%;min-width:100%;touch-action:none;overflow:hidden;background:#1a1a2e;position:fixed;inset:0;}#forklift-map-root{position:fixed;inset:0;}canvas{display:block;width:100%!important;height:100%!important;}</style></head><body><div id="forklift-map-root"></div><script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script><script>${FORKLIFT_MAP_RUNTIME_SCRIPT}</script><script>(function(){if(typeof THREE==='undefined')return;var tries=0;function boot(){var w=window.innerWidth||document.documentElement.clientWidth||0;var h=window.innerHeight||document.documentElement.clientHeight||0;if((w<40||h<40)&&tries++<150){requestAnimationFrame(boot);return;}if(window.__forkliftMapBooted)return;window.__forkliftMapBooted=true;try{var host=document.getElementById('forklift-map-root');var runtime=GRForkliftMapRuntime.bootForkliftMap(host);window.__forkliftMapApplyConfig=function(config){runtime.setConfig(config);};window.__forkliftMapSetFloor=function(floor){runtime.setFloor(floor);};if(window.__pendingForkliftMapConfig){runtime.setConfig(window.__pendingForkliftMapConfig);window.__pendingForkliftMapConfig=null;}}catch(e){if(window.ReactNativeWebView){window.ReactNativeWebView.postMessage(JSON.stringify({type:'forkliftMapError',message:String(e&&e.message||e)}));}}}requestAnimationFrame(boot);})();</script></body></html>`;
+}

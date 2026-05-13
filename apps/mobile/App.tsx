@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import React, { useEffect } from 'react';
+import { StyleSheet, Text } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +12,7 @@ import { Colors } from './src/constants/colors';
 import { MOCK_REPORTS, MOCK_ZONES } from './src/constants/mockZones';
 import { BoardDetailScreen } from './src/screens/BoardDetailScreen';
 import { BoardListScreen } from './src/screens/BoardListScreen';
+import { ForkliftMapScreen } from './src/screens/ForkliftMapScreen';
 import { MapScreen } from './src/screens/MapScreen';
 import { MissionScreen } from './src/screens/MissionScreen';
 import { loadFromCache, saveToCache } from './src/services/cache';
@@ -45,21 +47,38 @@ function Tabs() {
         tabBarInactiveTintColor: Colors.status.unknown,
         tabBarLabelStyle: { fontSize: 11, marginTop: 2 },
         tabBarShowLabel: true,
-        tabBarIcon: ({ color }) => (
-          <Feather
-            name={route.name === '지도' ? 'map' : route.name === '미션' ? 'target' : 'message-square'}
-            size={24}
-            color={color}
-          />
-        ),
+        tabBarIcon: ({ color }) => {
+          if (route.name === '3D맵') {
+            return (
+              <Text style={tabStyles.emojiIcon} accessibilityLabel="3D 맵">
+                🏗️
+              </Text>
+            );
+          }
+          return (
+            <Feather
+              name={route.name === '지도' ? 'map' : route.name === '미션' ? 'target' : 'message-square'}
+              size={24}
+              color={color}
+            />
+          );
+        },
       })}
     >
       <Tab.Screen name="지도" component={MapScreen} />
+      <Tab.Screen name="3D맵" component={ForkliftMapScreen} options={{ tabBarLabel: '3D 맵' }} />
       <Tab.Screen name="미션" component={MissionScreen} options={{ tabBarLabel: '오늘 미션' }} />
       <Tab.Screen name="게시판" component={BoardListScreen} />
     </Tab.Navigator>
   );
 }
+
+const tabStyles = StyleSheet.create({
+  emojiIcon: {
+    fontSize: 20,
+    lineHeight: 22,
+  },
+});
 
 function RootStack() {
   return (
